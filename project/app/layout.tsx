@@ -11,14 +11,10 @@ const inter = Inter({ subsets: ["latin"] })
 export const metadata: Metadata = {
   title: "Project Management Tool",
   description: "Team collaboration and project management platform",
-    generator: 'v0.dev'
+  generator: "v0.dev",
 }
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     // TODO: Task 2.1 - Wrap with ClerkProvider once Clerk is set up
     // <ClerkProvider>

@@ -36,7 +36,7 @@ Features to implement:
 
 export function ProjectCard() {
   return (
-    <div className="bg-white dark:bg-outer_space-500 p-6 rounded-lg border border-french_gray-300 dark:border-payne's_gray-400">
+    <div className="rounded-lg border border-french_gray-300 bg-white p-6 dark:border-payne's_gray-400 dark:bg-outer_space-500">
       <p className="text-center text-payne's_gray-500 dark:text-french_gray-400">
         TODO: Implement ProjectCard component
       </p>

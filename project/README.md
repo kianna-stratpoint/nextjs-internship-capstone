@@ -8,13 +8,13 @@
 
 A modern, Kanban-style project management application similar to Trello or Asana, featuring:
 
-- **Landing Page** with project overview and roadmap ✅ *Implemented*
-- **Dashboard Layout** with navigation and theme toggle ✅ *Implemented*
-- **Project Management Interface** with placeholder components ✅ *Basic Structure*
-- **User Authentication** with Clerk ⏳ *Planned*
-- **Interactive Kanban Board** with drag-and-drop ⏳ *Planned*
-- **Real-time Collaboration** features ⏳ *Planned*
-- **Responsive Design** with Tailwind CSS + custom color scheme ✅ *Implemented*
+- **Landing Page** with project overview and roadmap ✅ _Implemented_
+- **Dashboard Layout** with navigation and theme toggle ✅ _Implemented_
+- **Project Management Interface** with placeholder components ✅ _Basic Structure_
+- **User Authentication** with Clerk ⏳ _Planned_
+- **Interactive Kanban Board** with drag-and-drop ⏳ _Planned_
+- **Real-time Collaboration** features ⏳ _Planned_
+- **Responsive Design** with Tailwind CSS + custom color scheme ✅ _Implemented_
 
 ## 🎯 Learning Objectives
 
@@ -35,6 +35,7 @@ By completing this project, interns will demonstrate proficiency in:
 - **Structure**: Individual development with collaborative learning and task tracking
 
 ### Phase Breakdown
+
 - **Weeks 1-2**: Project setup, authentication, basic UI
 - **Weeks 3-4**: Core CRUD operations (Projects, Lists, Tasks)
 - **Weeks 5-6**: Advanced features (Drag & Drop, State Management)
@@ -45,6 +46,7 @@ By completing this project, interns will demonstrate proficiency in:
 ## 🛠 Tech Stack
 
 ### Currently Implemented
+
 - **Framework**: Next.js 16.1.6 (App Router with Turbopack) ✅
 - **Runtime**: React 19 ✅
 - **Language**: TypeScript 5.9 ✅
@@ -53,6 +55,7 @@ By completing this project, interns will demonstrate proficiency in:
 - **Theme System**: Dark/Light mode toggle ✅
 
 ### Planned Dependencies (Not Yet Installed)
+
 - **Database**: PostgreSQL with Drizzle ORM
 - **Authentication**: Clerk
 - **State Management**: Zustand
@@ -62,6 +65,7 @@ By completing this project, interns will demonstrate proficiency in:
 - **Deployment**: Vercel
 
 ### Development Tools
+
 - **Version Control**: Git + GitHub
 - **Package Manager**: pnpm 10.10.0
 - **Linting**: ESLint 9 + Next.js config
@@ -106,6 +110,7 @@ project/
 ## 🚀 Getting Started
 
 ### Prerequisites
+
 - **Node.js**: 20+ LTS
 - **pnpm**: Latest version (`npm install -g pnpm`)
 - **Git**: For version control
@@ -114,17 +119,20 @@ project/
 ### Setup Instructions
 
 1. **Clone the repository**
+
    ```bash
    git clone <repository-url>
    cd nextjs-internship-capstone/project
    ```
 
 2. **Install dependencies**
+
    ```bash
    pnpm install
    ```
 
 3. **Start development server**
+
    ```bash
    pnpm dev
    ```
@@ -134,25 +142,27 @@ project/
    - Explore the landing page and dashboard mockup
 
 ### Available Scripts
+
 - `pnpm dev` - Start development server
 - `pnpm build` - Build for production
 - `pnpm start` - Start production server
 - `pnpm lint` - Run ESLint
 
 ### 🚧 Current Limitations
+
 - **No Authentication**: Sign-in/sign-up buttons are placeholders
 - **No Database**: All data is mocked/placeholder
 - **No State Management**: Zustand stores are placeholder functions
 - **No Real Functionality**: Most interactions are visual only
 
-
-
 ## 👥 Individual Development & Collaboration
 
 ### Project Setup
+
 **Each intern should fork this repository individually** to create their own complete implementation:
 
 1. **Fork the Repository**
+
    ```bash
    # Fork this repo on GitHub to your personal account
    # Clone your fork locally
@@ -161,6 +171,7 @@ project/
    ```
 
 2. **Set Up Your Development Environment**
+
    ```bash
    # Install dependencies
    pnpm install
@@ -175,6 +186,7 @@ project/
    - Own your entire codebase and learning journey
 
 ### Why Individual Forks?
+
 - **Complete Learning Experience**: Every intern builds the full stack
 - **Portfolio Project**: Each intern owns a complete project for their portfolio
 - **Individual Pacing**: Work at your own pace while following milestones
@@ -182,7 +194,9 @@ project/
 - **Flexibility**: Explore different approaches and implementations
 
 ### Collaboration & Learning
+
 Despite individual development, interns collaborate through:
+
 - **Daily Standups**: Share progress, blockers, and solutions
 - **Code Review Sessions**: Optional peer reviews for learning
 - **Technical Discussions**: Share different implementation approaches
@@ -193,29 +207,36 @@ Despite individual development, interns collaborate through:
 ### Recommended Task Tracking Methods
 
 #### Option 1: GitHub Issues (Recommended)
+
 Create issues in your forked repository to track your progress:
 
 ```markdown
 ## Task: [Phase] - [Feature Name]
+
 **Priority**: High/Medium/Low
 **Estimated Time**: X hours
 **Week**: Week X
 
 ### Description
+
 Clear description of what needs to be implemented.
 
 ### Acceptance Criteria
+
 - [ ] Specific, measurable criteria
 - [ ] That define when the task is complete
 - [ ] Include testing requirements
 
 ### Notes
+
 - Dependencies on other tasks
 - Useful resources or documentation links
 ```
 
 #### Option 2: GitHub Projects Board
+
 Set up a personal project board in your fork:
+
 - **📋 Backlog** - All planned tasks
 - **🎯 Current Sprint** - Tasks for this week
 - **👨‍💻 In Progress** - Currently working on
@@ -223,13 +244,16 @@ Set up a personal project board in your fork:
 - **✅ Done** - Completed tasks
 
 #### Option 3: External Tools
+
 - **Notion**: Create a personal project dashboard
 - **Trello**: Simple Kanban board for task management
 - **Linear**: More advanced project management
 - **GitHub Projects**: Built-in project management
 
 ### Task Categories & Labels
+
 Organize your tasks with these categories:
+
 - `setup` - Project initialization and configuration
 - `auth` - Authentication and user management
 - `database` - Database schema and operations
@@ -240,7 +264,9 @@ Organize your tasks with these categories:
 - `documentation` - README, comments, and guides
 
 ### Weekly Milestone Tracking
+
 Track your progress against these milestones:
+
 - **Week 1-2**: Foundation & Setup
 - **Week 3-4**: Authentication & Database
 - **Week 5-6**: Core CRUD Features
@@ -259,6 +285,7 @@ Track your progress against these milestones:
 ## 🎯 Success Metrics
 
 ### Phase 1: Foundation (Current Status)
+
 - [x] Project structure and basic routing
 - [x] Landing page with project overview
 - [x] Dashboard layout and navigation
@@ -268,12 +295,14 @@ Track your progress against these milestones:
 - [ ] Database schema and connection
 
 ### Phase 2: Core Features (Upcoming)
+
 - [ ] Project CRUD operations
 - [ ] Task management system
 - [ ] Kanban board with drag-and-drop
 - [ ] User management and permissions
 
 ### Phase 3: Advanced Features (Future)
+
 - [ ] Real-time collaboration
 - [ ] Advanced filtering and search
 - [ ] File attachments and comments
@@ -281,6 +310,7 @@ Track your progress against these milestones:
 - [ ] Production deployment
 
 ### Final Goals
+
 - [ ] Fully functional project management application
 - [ ] Clean, maintainable codebase with proper documentation
 - [ ] Professional Git workflow demonstrated
@@ -289,18 +319,22 @@ Track your progress against these milestones:
 ## 🔧 Development Notes
 
 ### Custom Color Scheme
+
 The project uses a custom Tailwind color palette:
+
 - **Primary**: Blue Munsell (`blue_munsell`)
 - **Background**: Platinum, Outer Space (`platinum`, `outer_space`)
 - **Accent**: Payne's Gray, French Gray (`payne's_gray`, `french_gray`)
 
 ### Component Architecture
+
 - **Layout Components**: Dashboard layout with sidebar navigation
 - **UI Components**: Reusable cards, buttons, and theme toggle
 - **Page Components**: Landing page and dashboard with placeholder content
 - **Placeholder Components**: Kanban board, modals, and forms (not functional)
 
 ### Known Issues
+
 - Placeholder authentication routes (non-functional)
 - Mock data throughout the application
 - Incomplete state management implementation
@@ -319,12 +353,14 @@ As you progress through development, you'll need to replace placeholder dependen
 ### Steps to Clean Up Dependencies
 
 1. **Remove placeholder dependencies** from `package.json`:
+
    ```bash
    # Remove the _comment and _todo_dependencies sections
    # These contain placeholder/mock dependencies
    ```
 
 2. **Install real dependencies** as you implement features:
+
    ```bash
    # Example: When implementing authentication
    pnpm add @clerk/nextjs
@@ -343,6 +379,7 @@ As you progress through development, you'll need to replace placeholder dependen
    ```
 
 3. **Add development dependencies**:
+
    ```bash
    # Testing dependencies
    pnpm add -D jest @testing-library/react @testing-library/jest-dom playwright
@@ -352,6 +389,7 @@ As you progress through development, you'll need to replace placeholder dependen
    ```
 
 4. **Check for dependency conflicts**:
+
    ```bash
    # Check for warnings
    pnpm ls
@@ -361,6 +399,7 @@ As you progress through development, you'll need to replace placeholder dependen
    ```
 
 ### Implementation Checklist
+
 - [ ] Authentication system with Clerk
 - [ ] Database schema and ORM with Drizzle
 - [ ] State management with Zustand
@@ -383,4 +422,4 @@ As you progress through development, you'll need to replace placeholder dependen
 
 **Let's build something amazing together! 🎉**
 
-*This is a learning project - expect placeholder content and incomplete features as development progresses.*
+_This is a learning project - expect placeholder content and incomplete features as development progresses._

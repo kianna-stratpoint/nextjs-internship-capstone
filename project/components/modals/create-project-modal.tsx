@@ -33,11 +33,11 @@ Integration:
 export function CreateProjectModal() {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-      <div className="bg-white dark:bg-outer_space-500 rounded-lg p-6 w-full max-w-md mx-4">
-        <h3 className="text-lg font-semibold text-outer_space-500 dark:text-platinum-500 mb-4">
+      <div className="mx-4 w-full max-w-md rounded-lg bg-white p-6 dark:bg-outer_space-500">
+        <h3 className="mb-4 text-lg font-semibold text-outer_space-500 dark:text-platinum-500">
           TODO: Create Project Modal
         </h3>
-        <div className="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded border border-yellow-200 dark:border-yellow-800">
+        <div className="rounded border border-yellow-200 bg-yellow-50 p-4 dark:border-yellow-800 dark:bg-yellow-900/20">
           <p className="text-sm text-yellow-800 dark:text-yellow-200">
             📋 Implement project creation form with validation
           </p>

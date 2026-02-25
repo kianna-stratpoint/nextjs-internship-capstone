@@ -10,7 +10,7 @@ export function CreateProjectButton() {
     <>
       <button
         onClick={() => setIsOpen(true)}
-        className="inline-flex items-center px-4 py-2 bg-blue_munsell-500 text-white rounded-lg hover:bg-blue_munsell-600 transition-colors"
+        className="inline-flex items-center rounded-lg bg-blue_munsell-500 px-4 py-2 text-white transition-colors hover:bg-blue_munsell-600"
       >
         <Plus size={20} className="mr-2" />
         New Project
@@ -18,12 +18,14 @@ export function CreateProjectButton() {
 
       {isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="bg-white dark:bg-outer_space-500 rounded-lg p-6 w-full max-w-md mx-4">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-outer_space-500 dark:text-platinum-500">Create New Project</h3>
+          <div className="mx-4 w-full max-w-md rounded-lg bg-white p-6 dark:bg-outer_space-500">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-outer_space-500 dark:text-platinum-500">
+                Create New Project
+              </h3>
               <button
                 onClick={() => setIsOpen(false)}
-                className="p-1 hover:bg-platinum-500 dark:hover:bg-payne's_gray-400 rounded"
+                className="rounded p-1 hover:bg-platinum-500 dark:hover:bg-payne's_gray-400"
               >
                 <X size={20} />
               </button>
@@ -31,34 +33,34 @@ export function CreateProjectButton() {
 
             <form className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-outer_space-500 dark:text-platinum-500 mb-2">
+                <label className="mb-2 block text-sm font-medium text-outer_space-500 dark:text-platinum-500">
                   Project Name
                 </label>
                 <input
                   type="text"
-                  className="w-full px-3 py-2 border border-french_gray-300 dark:border-payne's_gray-400 rounded-lg bg-white dark:bg-outer_space-400 text-outer_space-500 dark:text-platinum-500 focus:outline-none focus:ring-2 focus:ring-blue_munsell-500"
+                  className="w-full rounded-lg border border-french_gray-300 bg-white px-3 py-2 text-outer_space-500 focus:outline-none focus:ring-2 focus:ring-blue_munsell-500 dark:border-payne's_gray-400 dark:bg-outer_space-400 dark:text-platinum-500"
                   placeholder="Enter project name"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-outer_space-500 dark:text-platinum-500 mb-2">
+                <label className="mb-2 block text-sm font-medium text-outer_space-500 dark:text-platinum-500">
                   Description
                 </label>
                 <textarea
                   rows={3}
-                  className="w-full px-3 py-2 border border-french_gray-300 dark:border-payne's_gray-400 rounded-lg bg-white dark:bg-outer_space-400 text-outer_space-500 dark:text-platinum-500 focus:outline-none focus:ring-2 focus:ring-blue_munsell-500"
+                  className="w-full rounded-lg border border-french_gray-300 bg-white px-3 py-2 text-outer_space-500 focus:outline-none focus:ring-2 focus:ring-blue_munsell-500 dark:border-payne's_gray-400 dark:bg-outer_space-400 dark:text-platinum-500"
                   placeholder="Project description"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-outer_space-500 dark:text-platinum-500 mb-2">
+                <label className="mb-2 block text-sm font-medium text-outer_space-500 dark:text-platinum-500">
                   Due Date
                 </label>
                 <input
                   type="date"
-                  className="w-full px-3 py-2 border border-french_gray-300 dark:border-payne's_gray-400 rounded-lg bg-white dark:bg-outer_space-400 text-outer_space-500 dark:text-platinum-500 focus:outline-none focus:ring-2 focus:ring-blue_munsell-500"
+                  className="w-full rounded-lg border border-french_gray-300 bg-white px-3 py-2 text-outer_space-500 focus:outline-none focus:ring-2 focus:ring-blue_munsell-500 dark:border-payne's_gray-400 dark:bg-outer_space-400 dark:text-platinum-500"
                 />
               </div>
 
@@ -66,13 +68,13 @@ export function CreateProjectButton() {
                 <button
                   type="button"
                   onClick={() => setIsOpen(false)}
-                  className="px-4 py-2 text-payne's_gray-500 dark:text-french_gray-400 hover:bg-platinum-500 dark:hover:bg-payne's_gray-400 rounded-lg transition-colors"
+                  className="rounded-lg px-4 py-2 text-payne's_gray-500 transition-colors hover:bg-platinum-500 dark:text-french_gray-400 dark:hover:bg-payne's_gray-400"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-blue_munsell-500 text-white rounded-lg hover:bg-blue_munsell-600 transition-colors"
+                  className="rounded-lg bg-blue_munsell-500 px-4 py-2 text-white transition-colors hover:bg-blue_munsell-600"
                 >
                   Create Project
                 </button>
