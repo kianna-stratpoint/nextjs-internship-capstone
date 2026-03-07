@@ -3,6 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import { Menu, X } from "lucide-react"
+import { Show, UserButton } from "@clerk/nextjs"
 import { ThemeToggle } from "@/components/shared/theme-toggle"
 
 export function Header() {
@@ -29,23 +30,41 @@ export function Header() {
         {/* Desktop right actions */}
         <div className="hidden items-center gap-3 md:flex">
           <ThemeToggle />
-          <Link
-            href="/sign-in"
-            className="rounded-lg border border-border px-4 py-2.5 text-base font-medium transition-colors hover:bg-accent"
-          >
-            Sign In
-          </Link>
-          <Link
-            href="/sign-up"
-            className="rounded-lg bg-primary px-4 py-2.5 text-base font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-          >
-            Get Started
-          </Link>
+
+          <Show when="signed-out">
+            <Link
+              href="/sign-in"
+              className="rounded-lg border border-border px-4 py-2.5 text-base font-medium transition-colors hover:bg-accent"
+            >
+              Sign In
+            </Link>
+            <Link
+              href="/sign-up"
+              className="rounded-lg bg-primary px-4 py-2.5 text-base font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+            >
+              Get Started
+            </Link>
+          </Show>
+
+          <Show when="signed-in">
+            <Link
+              href="/dashboard"
+              className="rounded-lg border border-border px-4 py-2.5 text-base font-medium transition-colors hover:bg-accent"
+            >
+              Dashboard
+            </Link>
+            <UserButton />
+          </Show>
         </div>
 
-        {/* Mobile: theme toggle + hamburger */}
+        {/* Mobile: theme toggle + avatar + hamburger */}
         <div className="flex items-center gap-2 md:hidden">
           <ThemeToggle />
+
+          <Show when="signed-in">
+            <UserButton />
+          </Show>
+
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
@@ -77,18 +96,30 @@ export function Header() {
 
             <div className="my-2 h-px bg-border" />
 
-            <Link
-              href="/sign-in"
-              className="rounded-lg border border-border px-3 py-2.5 text-center text-base font-normal transition-colors hover:bg-accent"
-            >
-              Sign In
-            </Link>
-            <Link
-              href="/sign-up"
-              className="rounded-lg bg-primary px-3 py-2.5 text-center text-base font-normal text-primary-foreground transition-colors hover:bg-primary/90"
-            >
-              Get Started
-            </Link>
+            <Show when="signed-out">
+              <Link
+                href="/sign-in"
+                className="rounded-lg border border-border px-3 py-2.5 text-center text-base font-normal transition-colors hover:bg-accent"
+              >
+                Sign In
+              </Link>
+              <Link
+                href="/sign-up"
+                className="rounded-lg bg-primary px-3 py-2.5 text-center text-base font-normal text-primary-foreground transition-colors hover:bg-primary/90"
+              >
+                Get Started
+              </Link>
+            </Show>
+
+            <Show when="signed-in">
+              <Link
+                href="/dashboard"
+                onClick={() => setMobileMenuOpen(false)}
+                className="rounded-lg bg-primary px-3 py-2.5 text-center text-base font-normal text-primary-foreground transition-colors hover:bg-primary/90"
+              >
+                Go to Dashboard
+              </Link>
+            </Show>
           </nav>
         </div>
       )}

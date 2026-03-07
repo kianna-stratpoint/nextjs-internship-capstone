@@ -3,49 +3,66 @@ import type React from "react"
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="relative flex min-h-screen flex-col bg-background">
-      {/* Logo */}
-      <div className="px-6 pt-6">
-        <Link href="/" className="font-display text-xl font-bold tracking-tight text-foreground">
+    <div className="relative flex min-h-screen flex-col overflow-hidden bg-background">
+      {/* Logo — top left */}
+      <div className="relative z-20 px-6 pt-6 sm:px-10 sm:pt-8">
+        <Link
+          href="/"
+          className="font-display text-2xl font-black tracking-tight text-foreground sm:text-3xl"
+        >
           FLOE<span className="text-brand">.</span>
         </Link>
       </div>
 
-      {/* Decorative curve — left */}
+      {/* Decorative curve — top-left flowing down */}
       <svg
-        viewBox="0 0 200 600"
+        viewBox="30 -200 400 800"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
-        className="pointer-events-none absolute -left-16 top-0 h-[500px] w-auto text-foreground"
+        className="pointer-events-none absolute -left-8 top-0 h-[60vh] w-auto text-foreground sm:h-[70vh] md:-left-4 md:h-[80vh]"
         aria-hidden="true"
       >
         <path
-          d="M100 0 C100 0, 20 100, 30 200 C40 300, 0 350, 10 450 C20 550, 80 580, 60 600"
+          d="M0.51562 1.4086C259.2 96.1006 121.71 209.419 43.4736 247.867"
           stroke="currentColor"
-          strokeWidth="40"
-          strokeLinecap="round"
+          strokeWidth="3"
           fill="none"
         />
       </svg>
 
-      {/* Decorative curve — center-bottom */}
+      {/* Decorative curve — left flowing down */}
       <svg
-        viewBox="0 0 300 400"
+        viewBox="0 -500 700 800"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
-        className="pointer-events-none absolute bottom-0 left-1/2 h-[350px] w-auto -translate-x-1/2 text-foreground md:left-[40%]"
+        className="pointer-events-none absolute -left-8 top-0 h-[60vh] w-auto text-foreground sm:h-[70vh] md:-left-4 md:h-[80vh]"
         aria-hidden="true"
       >
         <path
-          d="M50 0 C80 80, 250 100, 200 200 C150 300, 280 350, 250 400"
+          d="M863.862 0.891571C553.625 420.636 380.685 -241.368 1.16718 228.758"
           stroke="currentColor"
-          strokeWidth="35"
-          strokeLinecap="round"
+          strokeWidth="3"
           fill="none"
         />
       </svg>
 
-      {/* Content — centered */}
+      {/* Decorative curve — bottom, flowing right */}
+      <svg
+        viewBox="-800 0 5000 300"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+        className="pointer-events-none absolute bottom-0 left-[10%] h-[30vh] w-auto text-foreground sm:left-[15%] md:left-[20%] md:h-[35vh]"
+        aria-hidden="true"
+      >
+        <path
+          d="M0.942139 58.1566C264.439 -154.538 500.53 320.526 667.875 42.2685"
+          stroke="currentColor"
+          strokeWidth="3"
+          fill="none"
+        />
+      </svg>
+
+      {/* Content area — card pushed to center-right */}
       <div className="relative z-10 flex flex-1 items-center justify-center px-6 py-12">
         {children}
       </div>

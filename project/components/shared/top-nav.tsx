@@ -1,5 +1,6 @@
 "use client"
 
+import { UserButton } from "@clerk/nextjs"
 import { ThemeToggle } from "@/components/shared/theme-toggle"
 import { Menu, Bell } from "lucide-react"
 
@@ -29,10 +30,14 @@ export function TopNav({ onMenuClick }: TopNavProps) {
           <Bell size={18} />
         </button>
 
-        {/* Avatar — replace with Clerk <UserButton /> in Phase 2 */}
-        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
-          KG
-        </div>
+        {/* Clerk UserButton — shows avatar, sign-out, manage account */}
+        <UserButton
+          appearance={{
+            elements: {
+              avatarBox: "h-8 w-8",
+            },
+          }}
+        />
       </div>
     </header>
   )

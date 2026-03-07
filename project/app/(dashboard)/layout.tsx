@@ -1,32 +1,34 @@
-"use client"
+/* ============================================
+   This is now a SERVER component that:
+   1. Checks if user is authenticated (redirects to /sign-in if not)
+   2. Checks if onboarding is complete (redirects to /onboarding if not)
+   3. Renders the client-side DashboardShell (sidebar + topnav)
+   
+   The actual sidebar/topnav UI lives in DashboardShell
+   (client component) since it needs useState for mobile menu.
+   ============================================ */
 
 import type React from "react"
-import { useState, Suspense } from "react"
-import { Sidebar } from "@/components/shared/sidebar"
-import { TopNav } from "@/components/shared/top-nav"
+import { auth, currentUser } from "@clerk/nextjs/server"
+import { redirect } from "next/navigation"
+import { DashboardShell } from "@/components/shared/dashboard-shell"
 
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const [sidebarOpen, setSidebarOpen] = useState(false)
+export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const { userId } = await auth()
 
-  return (
-    <div className="flex h-screen overflow-hidden bg-background">
-      {/* Mobile overlay */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
+  // Not authenticated — redirect to sign-in
+  if (!userId) {
+    redirect("/sign-in")
+  }
 
-      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+  // Check if onboarding is complete
+  // Skip this check if we're already on the onboarding page
+  const user = await currentUser()
+  const onboardingComplete = user?.unsafeMetadata?.onboardingComplete === true
 
-      <div className="flex flex-1 flex-col overflow-hidden">
-        <TopNav onMenuClick={() => setSidebarOpen(true)} />
+  // We can't check the current path in a layout server component easily,
+  // so the onboarding page itself will handle not redirecting in a loop.
+  // This flag is passed down so the shell knows whether to redirect.
 
-        <main className="flex-1 overflow-y-auto px-4 py-6 sm:px-6 lg:px-8">
-          <Suspense>{children}</Suspense>
-        </main>
-      </div>
-    </div>
-  )
+  return <DashboardShell onboardingComplete={onboardingComplete}>{children}</DashboardShell>
 }

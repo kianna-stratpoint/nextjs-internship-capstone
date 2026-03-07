@@ -1,3 +1,4 @@
+import { currentUser } from "@clerk/nextjs/server"
 import { DashboardGreeting } from "@/components/features/dashboard/dashboard-greeting"
 import { DashboardStats } from "@/components/features/dashboard/dashboard-stats"
 import { RecentProjects } from "@/components/features/dashboard/recent-projects"
@@ -10,10 +11,12 @@ export const metadata: Metadata = {
   description: "Your project management dashboard",
 }
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
+  const user = await currentUser()
+
   return (
     <div className="space-y-6">
-      <DashboardGreeting />
+      <DashboardGreeting firstName={user?.firstName ?? undefined} />
       <DashboardStats />
 
       {/* Recent Projects + Recent Activity side by side */}

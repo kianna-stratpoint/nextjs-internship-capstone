@@ -18,7 +18,7 @@ interface DashboardGreetingProps {
   firstName?: string
 }
 
-export function DashboardGreeting({ firstName = "Kianna" }: DashboardGreetingProps) {
+export function DashboardGreeting({ firstName = "there" }: DashboardGreetingProps) {
   return (
     <div className="border-l-2 border-foreground pl-4">
       <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">

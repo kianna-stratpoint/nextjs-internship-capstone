@@ -1,9 +1,10 @@
+// DONE: Task 2.1 - Set up Clerk authentication service
+// DONE: Task 2.1 - Wrap with ClerkProvider once Clerk is set up
 import type React from "react"
 import type { Metadata } from "next"
 import { DM_Sans, Syne } from "next/font/google"
 import "./globals.css"
-// TODO: Task 2.1 - Set up Clerk authentication service
-// import { ClerkProvider } from "@clerk/nextjs"
+import { ClerkProvider } from "@clerk/nextjs"
 import { ThemeProvider } from "@/components/shared/theme-provider"
 
 const dmSans = DM_Sans({
@@ -26,13 +27,12 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    // TODO: Task 2.1 - Wrap with ClerkProvider once Clerk is set up
-    // <ClerkProvider>
-    <html lang="en" suppressHydrationWarning className={`${dmSans.variable} ${syne.variable}`}>
-      <body className="font-body">
-        <ThemeProvider>{children}</ThemeProvider>
-      </body>
-    </html>
-    // </ClerkProvider>
+    <ClerkProvider afterSignOutUrl="/">
+      <html lang="en" suppressHydrationWarning className={`${dmSans.variable} ${syne.variable}`}>
+        <body className="font-body">
+          <ThemeProvider>{children}</ThemeProvider>
+        </body>
+      </html>
+    </ClerkProvider>
   )
 }
