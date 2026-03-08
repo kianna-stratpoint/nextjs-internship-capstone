@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 export default function SignUpPage() {
   return (
     <SignUp
-      forceRedirectUrl="/dashboard"
+      forceRedirectUrl="/onboarding"
       appearance={{
         variables: {
           colorPrimary: "#000000",
