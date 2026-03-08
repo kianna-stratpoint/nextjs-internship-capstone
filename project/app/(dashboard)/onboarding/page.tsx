@@ -9,8 +9,9 @@
 
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useUser } from "@clerk/nextjs"
+import { useRouter } from "next/navigation"
 
 const roles = ["Project Manager", "Developer", "Designer", "QA", "DevOps", "Stakeholder"] as const
 
@@ -20,6 +21,7 @@ function OnboardingForm({ user }: { user: NonNullable<ReturnType<typeof useUser>
   const [role, setRole] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState("")
+  const router = useRouter()
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -46,6 +48,11 @@ function OnboardingForm({ user }: { user: NonNullable<ReturnType<typeof useUser>
         },
       })
 
+      // 1. Force Clerk to fetch the newly updated data and refresh the local session token
+      await user.reload()
+
+      // 2. Force a hard browser reload instead of a soft Next.js router transition.
+      // This guarantees the server receives the brand new cookie on the next request.
       window.location.href = "/dashboard"
     } catch {
       setError("Something went wrong. Please try again.")
@@ -135,8 +142,17 @@ function OnboardingForm({ user }: { user: NonNullable<ReturnType<typeof useUser>
 
 export default function OnboardingPage() {
   const { user, isLoaded } = useUser()
+  const router = useRouter()
 
-  if (!isLoaded || !user) {
+  // Protect the route: if they are loaded and already completed onboarding, boot them to dashboard
+  useEffect(() => {
+    if (isLoaded && user?.unsafeMetadata?.onboardingComplete) {
+      router.push("/dashboard")
+    }
+  }, [isLoaded, user, router])
+
+  // Keep the loading state active if they are about to be redirected so the form doesn't flash
+  if (!isLoaded || !user || user.unsafeMetadata?.onboardingComplete) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="text-sm text-muted-foreground">Loading...</div>

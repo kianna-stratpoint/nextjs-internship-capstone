@@ -1,4 +1,4 @@
-// TODO: Task 3.2 - Configure PostgreSQL database (Vercel Postgres or Neon)
+// DONE: Task 3.2 - Configure PostgreSQL database (Vercel Postgres or Neon)
 // TODO: Task 3.5 - Implement database connection and query utilities
 
 import { neon } from "@neondatabase/serverless"
