@@ -12,6 +12,7 @@ import { useState, useEffect, Suspense } from "react"
 import { usePathname, useRouter } from "next/navigation"
 import { Sidebar } from "@/components/shared/sidebar"
 import { TopNav } from "@/components/shared/top-nav"
+import { CreateProjectModal } from "../modals/create-project-modal"
 
 interface DashboardShellProps {
   children: React.ReactNode
@@ -50,10 +51,11 @@ export function DashboardShell({ children, onboardingComplete }: DashboardShellP
 
       <div className="flex flex-1 flex-col overflow-hidden">
         <TopNav onMenuClick={() => setSidebarOpen(true)} />
-
         <main className="flex-1 overflow-y-auto px-4 py-6 sm:px-6 lg:px-8">
           <Suspense>{children}</Suspense>
         </main>
+        `
+        <CreateProjectModal />`
       </div>
     </div>
   )

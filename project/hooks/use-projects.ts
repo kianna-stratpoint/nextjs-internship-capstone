@@ -56,14 +56,33 @@ Dependencies to install:
 */
 
 // Placeholder to prevent import errors
+import { useTransition } from "react"
+import { createProjectAction } from "@/lib/actions/projects"
+
 export function useProjects() {
-  console.log("TODO: Implement useProjects hook")
+  const [isCreating, startTransition] = useTransition()
+
+  const createProject = async (formData: FormData) => {
+    return new Promise((resolve, reject) => {
+      startTransition(async () => {
+        try {
+          const result = await createProjectAction(formData)
+
+          // If the server action returns a result with success: false, it means validation failed
+          if (result && !result.success) {
+            reject(result)
+          } else {
+            resolve(result)
+          }
+        } catch (error) {
+          reject({ error: "An unexpected error occurred." })
+        }
+      })
+    })
+  }
+
   return {
-    projects: [],
-    isLoading: false,
-    error: null,
-    createProject: (data: any) => console.log("TODO: Create project", data),
-    updateProject: (id: string, data: any) => console.log(`TODO: Update project ${id}`, data),
-    deleteProject: (id: string) => console.log(`TODO: Delete project ${id}`),
+    createProject,
+    isCreating,
   }
 }

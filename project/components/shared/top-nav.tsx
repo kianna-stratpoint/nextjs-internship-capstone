@@ -23,10 +23,10 @@ export function TopNav({ onMenuClick }: TopNavProps) {
       <div className="flex-1" />
 
       {/* Right actions */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-4">
         <ThemeToggle />
 
-        <button className="relative rounded-lg p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
+        <button className="flex items-center justify-center rounded-lg border border-border bg-card p-3 text-foreground transition-colors hover:bg-accent hover:text-foreground">
           <Bell size={18} />
         </button>
 

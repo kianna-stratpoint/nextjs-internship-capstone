@@ -1,3 +1,4 @@
+import { Suspense } from "react"
 import { currentUser } from "@clerk/nextjs/server"
 import { DashboardGreeting } from "@/components/features/dashboard/dashboard-greeting"
 import { DashboardStats } from "@/components/features/dashboard/dashboard-stats"
@@ -17,12 +18,34 @@ export default async function DashboardPage() {
   return (
     <div className="space-y-6">
       <DashboardGreeting firstName={user?.firstName ?? undefined} />
-      <DashboardStats />
 
-      {/* Recent Projects + Recent Activity side by side */}
+      {/* Stream Stats */}
+      <Suspense
+        fallback={
+          <div className="h-32 w-full animate-pulse rounded-xl bg-gray-200 dark:bg-gray-800" />
+        }
+      >
+        <DashboardStats />
+      </Suspense>
+
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_380px]">
-        <RecentProjects />
-        <RecentActivity />
+        {/* Stream Recent Projects */}
+        <Suspense
+          fallback={
+            <div className="h-96 w-full animate-pulse rounded-xl bg-gray-200 dark:bg-gray-800" />
+          }
+        >
+          <RecentProjects />
+        </Suspense>
+
+        {/* Stream Recent Activity */}
+        <Suspense
+          fallback={
+            <div className="h-96 w-full animate-pulse rounded-xl bg-gray-200 dark:bg-gray-800" />
+          }
+        >
+          <RecentActivity />
+        </Suspense>
       </div>
 
       <QuickActions />

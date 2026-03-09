@@ -7,6 +7,7 @@
 
 import { currentUser, auth } from "@clerk/nextjs/server"
 import { redirect } from "next/navigation"
+import { getUserByClerkId } from "@/lib/db/queries/users"
 
 /**
  * Get the current authenticated user.
@@ -37,7 +38,20 @@ export async function requireAuth() {
   if (!user) {
     redirect("/sign-in")
   }
-  return user
+
+  // Translate Clerk ID to Database UUID
+  const dbUser = await getUserByClerkId(user.id)
+
+  if (!dbUser && !user.onboardingComplete) {
+    redirect("/onboarding")
+  } else if (!dbUser) {
+    throw new Error("User authenticated but not found in the database.")
+  }
+
+  return {
+    ...user,
+    dbUserId: dbUser.id, // <-- We add the Postgres UUID here!
+  }
 }
 
 /**
