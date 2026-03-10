@@ -57,11 +57,16 @@ Dependencies to install:
 
 // Placeholder to prevent import errors
 import { useTransition } from "react"
-import { createProjectAction, deleteProjectAction } from "@/lib/actions/projects"
+import {
+  createProjectAction,
+  deleteProjectAction,
+  updateProjectAction,
+} from "@/lib/actions/projects"
 
 export function useProjects() {
   const [isCreating, startTransition] = useTransition()
   const [isDeleting, startDeleteTransition] = useTransition()
+  const [isUpdating, startUpdateTransition] = useTransition()
 
   const createProject = async (formData: FormData) => {
     return new Promise((resolve, reject) => {
@@ -79,6 +84,7 @@ export function useProjects() {
       })
     })
   }
+
   const deleteProject = async (projectId: string) => {
     return new Promise((resolve, reject) => {
       startDeleteTransition(async () => {
@@ -96,10 +102,29 @@ export function useProjects() {
     })
   }
 
+  const updateProject = async (projectId: string, formData: FormData) => {
+    return new Promise((resolve, reject) => {
+      startUpdateTransition(async () => {
+        try {
+          const result = await updateProjectAction(projectId, formData)
+          if (result && !result.success) {
+            reject(result)
+          } else {
+            resolve(result)
+          }
+        } catch (error) {
+          reject({ error: "An unexpected error occurred." })
+        }
+      })
+    })
+  }
+
   return {
     createProject,
     isCreating,
     deleteProject,
     isDeleting,
+    updateProject,
+    isUpdating,
   }
 }

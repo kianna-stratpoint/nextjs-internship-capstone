@@ -48,17 +48,29 @@ export const useUIStore = create<UIState>((set) => ({
 }))
 */
 
-// Placeholder to prevent import errors
 import { create } from "zustand"
+import { type ProjectCardData } from "@/types"
 
 interface UIState {
+  // Create Modal
   isCreateProjectModalOpen: boolean
   openCreateProjectModal: () => void
   closeCreateProjectModal: () => void
+
+  // Edit Modal
+  isEditProjectModalOpen: boolean
+  editingProject: ProjectCardData | null
+  openEditProjectModal: (project: ProjectCardData) => void
+  closeEditProjectModal: () => void
 }
 
 export const useUIStore = create<UIState>((set) => ({
   isCreateProjectModalOpen: false,
   openCreateProjectModal: () => set({ isCreateProjectModalOpen: true }),
   closeCreateProjectModal: () => set({ isCreateProjectModalOpen: false }),
+
+  isEditProjectModalOpen: false,
+  editingProject: null,
+  openEditProjectModal: (project) => set({ isEditProjectModalOpen: true, editingProject: project }),
+  closeEditProjectModal: () => set({ isEditProjectModalOpen: false, editingProject: null }),
 }))

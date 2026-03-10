@@ -135,9 +135,9 @@ export async function deleteProjectAction(projectId: string) {
     return { success: false, error: "Failed to delete project." }
   }
 
-  // 3. Revalidate and Redirect
+  // 3. Revalidate and Return Success
   revalidatePath("/projects", "layout")
-  redirect("/projects")
+  return { success: true }
 }
 
 /**

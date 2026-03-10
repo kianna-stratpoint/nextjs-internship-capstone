@@ -13,62 +13,76 @@ export const metadata: Metadata = {
   description: "Manage and organize your team projects",
 }
 
+// Next.js 15 requires searchParams to be a Promise
 interface ProjectsPageProps {
-  searchParams: {
+  searchParams: Promise<{
     query?: string
     sort?: string
-  }
+    view?: string
+  }>
 }
 
 export default async function ProjectsPage({ searchParams }: ProjectsPageProps) {
   const { dbUserId: userId } = await requireAuth()
 
-  // 1. Fetch raw data
-  const rawProjects = await getProjectsByUserId(userId)
-  const totalCount = rawProjects.length
+  // 1. AWAIT the searchParams (Next.js 15 Fix)
+  const resolvedParams = await searchParams
 
-  // 2. Extract URL parameters
-  const query = searchParams?.query?.toLowerCase() || ""
-  const sort = searchParams?.sort || "asc"
-
-  // 3. Filter and Sort on the server
-  let processedProjects = rawProjects
-
-  if (query) {
-    processedProjects = processedProjects.filter((p) => p.title.toLowerCase().includes(query))
-  }
-
-  processedProjects.sort((a, b) => {
-    const comparison = a.title.localeCompare(b.title)
-    return sort === "desc" ? -comparison : comparison
+  // 2. Fetch data (The database query now handles ALL filtering and sorting!)
+  const processedProjects = await getProjectsByUserId(userId, {
+    query: resolvedParams.query,
+    sort: resolvedParams.sort,
+    view: resolvedParams.view,
   })
 
-  // 4. Split for rendering
-  const pinnedProjects = processedProjects.filter((p) => p.isPinned)
-  const otherProjects = processedProjects.filter((p) => !p.isPinned)
+  // 3. Extract UI values
+  const query = resolvedParams.query || ""
+  const view = resolvedParams.view || "active"
+  const viewTotalCount = processedProjects.length
+
+  // 4. Split for rendering (Since the DB already sorted them, we just separate pinned vs unpinned)
+  const pinnedProjects = view === "active" ? processedProjects.filter((p) => p.isPinned) : []
+  const otherProjects =
+    view === "active" ? processedProjects.filter((p) => !p.isPinned) : processedProjects
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Projects</h1>
+          <h1 className="text-3xl font-bold capitalize text-foreground">
+            {view === "archived" ? "Archived Projects" : "Projects"}
+          </h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            {totalCount} projects | {rawProjects.filter((p) => p.isPinned).length} pinned
+            {viewTotalCount} {view === "archived" ? "archived" : "active"} projects
+            {view === "active" && ` | ${pinnedProjects.length} pinned`}
           </p>
         </div>
         <CreateProjectButton />
       </div>
 
-      {/* Empty State vs Real Data */}
-      {totalCount === 0 ? (
+      {/* 🚨 MOVED TOOLBAR HERE: It will now always render 🚨 */}
+      <ProjectsToolbar />
+
+      {/* Check if user has ZERO projects entirely (no active and no archived) */}
+      {viewTotalCount === 0 && view === "active" && !query ? (
         <ProjectsEmptyState />
       ) : (
         <>
-          <ProjectsToolbar />
+          {/* Empty state for specific filters/views */}
+          {processedProjects.length === 0 && (
+            <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border py-16 text-center">
+              <p className="text-sm font-medium text-foreground">No projects found</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {query
+                  ? `No ${view} projects match your search "${query}".`
+                  : `You don't have any ${view} projects right now.`}
+              </p>
+            </div>
+          )}
 
           {/* Pinned Projects Section */}
-          {pinnedProjects.length > 0 && (
+          {pinnedProjects.length > 0 && view === "active" && (
             <div className="space-y-4">
               <h2 className="text-lg font-semibold text-foreground">Pinned Projects</h2>
               <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -79,21 +93,19 @@ export default async function ProjectsPage({ searchParams }: ProjectsPageProps) 
             </div>
           )}
 
-          {/* All Projects Section */}
-          <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-foreground">All Projects</h2>
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {otherProjects.map((project) => (
-                <ProjectCard key={project.id} project={project} />
-              ))}
-
-              {otherProjects.length === 0 && (
-                <div className="col-span-full rounded-xl border border-dashed border-border py-8 text-center text-sm text-muted-foreground">
-                  No projects found matching your search.
-                </div>
-              )}
+          {/* All/Remaining Projects Section */}
+          {otherProjects.length > 0 && (
+            <div className="space-y-4">
+              <h2 className="text-lg font-semibold text-foreground">
+                {view === "archived" ? "Archived" : pinnedProjects.length > 0 ? "All Projects" : ""}
+              </h2>
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+                {otherProjects.map((project) => (
+                  <ProjectCard key={project.id} project={project} />
+                ))}
+              </div>
             </div>
-          </div>
+          )}
         </>
       )}
     </div>

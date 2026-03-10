@@ -13,6 +13,7 @@ import { usePathname, useRouter } from "next/navigation"
 import { Sidebar } from "@/components/shared/sidebar"
 import { TopNav } from "@/components/shared/top-nav"
 import { CreateProjectModal } from "../modals/create-project-modal"
+import { EditProjectModal } from "@/components/modals/edit-project-modal"
 
 interface DashboardShellProps {
   children: React.ReactNode
@@ -56,6 +57,7 @@ export function DashboardShell({ children, onboardingComplete }: DashboardShellP
         </main>
         `
         <CreateProjectModal />`
+        <EditProjectModal />
       </div>
     </div>
   )

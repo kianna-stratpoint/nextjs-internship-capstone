@@ -51,6 +51,9 @@ import {
   LayoutDashboard,
   Clock,
   Loader2,
+  Lock,
+  Globe,
+  Upload,
 } from "lucide-react"
 
 import {
@@ -74,6 +77,8 @@ import {
 
 import { type ProjectCardData } from "@/types/index"
 import { useProjects } from "@/hooks/use-projects"
+import { useToast } from "@/hooks/use-toast"
+import { useUIStore } from "@/stores/ui-store"
 
 // Server Actions
 import {
@@ -104,7 +109,10 @@ type ProjectCardProps = {
 }
 
 export function ProjectCard({ project }: ProjectCardProps) {
+  const { toast } = useToast()
+
   const [isPending, startTransition] = useTransition()
+  const { openEditProjectModal } = useUIStore()
   const { deleteProject, isDeleting } = useProjects()
 
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
@@ -124,22 +132,41 @@ export function ProjectCard({ project }: ProjectCardProps) {
     startTransition(async () => {
       const newStatus = project.status === "completed" ? "active" : "completed"
       await setProjectStatusAction(project.id, newStatus)
+
+      toast({
+        title: "Status updated!",
+        description: "The Project Status has been updated.",
+      })
     })
   }
 
   const handleCopyLink = () => {
     const url = `${window.location.origin}/projects/${project.id}`
     navigator.clipboard.writeText(url)
-    // TODO: Optionally trigger a toast notification here
+
+    toast({
+      title: "Link copied!",
+      description: "Project link has been copied to your clipboard.",
+    })
   }
 
   const handleDeleteConfirm = async (e: React.MouseEvent) => {
-    e.preventDefault() // Prevent dialog from closing immediately
+    e.preventDefault()
+
     try {
       await deleteProject(project.id)
       setShowDeleteDialog(false)
-    } catch (error) {
-      // Optionally show a toast error here
+
+      toast({
+        title: "Project deleted",
+        description: "The project has been permanently removed.",
+      })
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Failed to delete project",
+        description: error?.error || "An unexpected error occurred. Please try again.",
+      })
     }
   }
 
@@ -213,9 +240,26 @@ export function ProjectCard({ project }: ProjectCardProps) {
 
         <div className="flex flex-col p-5 pt-6">
           <div className="mb-2 flex items-start justify-between gap-4">
-            <Link href={`/projects/${project.id}`} className="hover:underline">
-              <h3 className="line-clamp-1 text-lg font-bold text-foreground">{project.title}</h3>
-            </Link>
+            <div className="space-y-1.5">
+              <Link href={`/projects/${project.id}`} className="hover:underline">
+                <h3 className="line-clamp-1 text-lg font-bold text-foreground">{project.title}</h3>
+              </Link>
+
+              {/* NEW: Visibility Badge */}
+              <div className="flex w-fit items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                {project.visibility === "private" ? (
+                  <>
+                    <Lock size={10} />
+                    <span>Private</span>
+                  </>
+                ) : (
+                  <>
+                    <Globe size={10} />
+                    <span>Public</span>
+                  </>
+                )}
+              </div>
+            </div>
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -251,19 +295,37 @@ export function ProjectCard({ project }: ProjectCardProps) {
                 {isAdmin && (
                   <>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem className="cursor-pointer">
-                      <Edit className="mr-2 h-4 w-4" /> Edit Details
-                    </DropdownMenuItem>
                     <DropdownMenuItem
                       className="cursor-pointer"
-                      onClick={() =>
-                        startTransition(() => {
-                          archiveProjectAction(project.id, true)
-                        })
-                      }
+                      onClick={() => openEditProjectModal(project)}
                     >
-                      <Archive className="mr-2 h-4 w-4" /> Archive
+                      <Edit className="mr-2 h-4 w-4" /> Edit Details
                     </DropdownMenuItem>
+                    {/* Import Upload or Undo icon from lucide-react at the top */}
+                    {project.isArchived ? (
+                      <DropdownMenuItem
+                        className="cursor-pointer"
+                        onClick={() =>
+                          startTransition(() => {
+                            // Assuming false means "unarchive"
+                            archiveProjectAction(project.id, false)
+                          })
+                        }
+                      >
+                        <Upload className="mr-2 h-4 w-4" /> Unarchive
+                      </DropdownMenuItem>
+                    ) : (
+                      <DropdownMenuItem
+                        className="cursor-pointer"
+                        onClick={() =>
+                          startTransition(() => {
+                            archiveProjectAction(project.id, true)
+                          })
+                        }
+                      >
+                        <Archive className="mr-2 h-4 w-4" /> Archive
+                      </DropdownMenuItem>
+                    )}
                     <DropdownMenuSeparator />
                     {/* TRIGGER DELETE MODAL HERE */}
                     <DropdownMenuItem
@@ -278,7 +340,7 @@ export function ProjectCard({ project }: ProjectCardProps) {
             </DropdownMenu>
           </div>
 
-          <p className="mb-6 line-clamp-2 min-h-[40px] text-sm text-muted-foreground">
+          <p className="mb-6 mt-2 line-clamp-2 min-h-[40px] text-sm text-muted-foreground">
             {project.description || "No description provided."}
           </p>
 
@@ -350,7 +412,7 @@ export function ProjectCard({ project }: ProjectCardProps) {
             <AlertDialogTitle className="text-foreground">
               Are you absolutely sure?
             </AlertDialogTitle>
-            <AlertDialogDescription>
+            <AlertDialogDescription className="text-muted-foreground">
               This will permanently delete the <strong>{project.title}</strong> project. All
               associated lists, tasks, comments, and activity logs will be removed. This action
               cannot be undone.

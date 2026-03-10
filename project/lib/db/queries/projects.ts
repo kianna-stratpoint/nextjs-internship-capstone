@@ -1,4 +1,4 @@
-import { eq, and, desc, asc, count, sql, or, exists } from "drizzle-orm"
+import { eq, and, desc, asc, count, sql, or, exists, ilike } from "drizzle-orm"
 import { db } from "@/lib/db"
 import {
   projects,
@@ -13,41 +13,67 @@ import {
 
 /**
  * Get all projects a user is a member of.
- * Includes member count and task stats for the Projects page.
+ * Filters, searches, and sorts directly at the database level using Drizzle.
  */
-export async function getProjectsByUserId(userId: string) {
-  const userProjects = await db.query.projectMembers.findMany({
-    where: eq(projectMembers.userId, userId),
+export async function getProjectsByUserId(
+  userId: string,
+  searchParams?: { query?: string; sort?: string; view?: string }
+) {
+  const isArchivedView = searchParams?.view === "archived"
+  const query = searchParams?.query || ""
+  const sortDirection = searchParams?.sort === "desc" ? desc : asc
+
+  // 1. Query the Database
+  const userProjects = await db.query.projects.findMany({
+    where: and(
+      // A. User must be a member of the project
+      exists(
+        db
+          .select()
+          .from(projectMembers)
+          .where(and(eq(projectMembers.projectId, projects.id), eq(projectMembers.userId, userId)))
+      ),
+      // B. Filter by View (Active vs Archived)
+      isArchivedView
+        ? eq(projects.isArchived, true)
+        : or(eq(projects.isArchived, false), sql`${projects.isArchived} IS NULL`),
+      // C. Search query (Database-level text matching)
+      query
+        ? or(ilike(projects.title, `%${query}%`), ilike(projects.description, `%${query}%`))
+        : undefined
+    ),
     with: {
-      project: {
+      members: {
         with: {
-          members: {
-            with: {
-              user: true,
-            },
-          },
+          user: true,
         },
       },
     },
-    orderBy: desc(projectMembers.joinedAt),
+    orderBy: (projects) => [
+      // DB-level sorting by title
+      sortDirection(projects.title),
+    ],
   })
 
-  // Enrich with task counts
+  // 2. Enrich with task counts and specific user details
   const enriched = await Promise.all(
-    userProjects.map(async (pm) => {
+    userProjects.map(async (project) => {
+      // Find this specific user's membership details from the pre-fetched members list
+      const userMembership = project.members.find((m) => m.userId === userId)
+
       const [taskStats] = await db
         .select({
           total: count(tasks.id),
           completed: count(sql`CASE WHEN ${tasks.isCompleted} = true THEN 1 END`),
         })
         .from(tasks)
-        .where(eq(tasks.projectId, pm.project.id))
+        .where(eq(tasks.projectId, project.id))
 
       return {
-        ...pm.project,
-        memberRole: pm.role,
-        isPinned: pm.isPinned,
-        members: pm.project.members,
+        ...project,
+        memberRole: userMembership?.role ?? "viewer",
+        isPinned: userMembership?.isPinned ?? false,
+        members: project.members,
         _count: {
           tasks: taskStats?.total ?? 0,
           completedTasks: taskStats?.completed ?? 0,
@@ -55,6 +81,14 @@ export async function getProjectsByUserId(userId: string) {
       }
     })
   )
+
+  // 3. Surface Pinned projects to the top.
+  // The rest of the array is already perfectly sorted A-Z/Z-A by the database.
+  enriched.sort((a, b) => {
+    if (a.isPinned && !b.isPinned) return -1
+    if (!a.isPinned && b.isPinned) return 1
+    return 0
+  })
 
   return enriched
 }
@@ -118,7 +152,6 @@ export async function getUserProjectRole(projectId: string, userId: string) {
  * Wraps everything in a single operation for consistency.
  */
 export async function createProject(
-  // Added visibility to Pick
   data: Pick<
     NewProject,
     "title" | "description" | "color" | "priority" | "visibility" | "startDate" | "dueDate"
@@ -216,7 +249,7 @@ export async function updateProject(
       | "description"
       | "color"
       | "priority"
-      | "visibility" // <-- Added visibility here
+      | "visibility"
       | "status"
       | "startDate"
       | "dueDate"
