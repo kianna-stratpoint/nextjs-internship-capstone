@@ -8,8 +8,12 @@ import {
   projects,
   labels,
   taskLabels,
+  taskAttachments,
   type NewTask,
 } from "@/lib/db/schema"
+
+// Define a type for incoming UploadThing attachments
+type AttachmentInput = { url: string; name: string; size?: number; type?: string }
 
 /**
  * Get all tasks in a project, ordered by position within each list.
@@ -25,6 +29,7 @@ export async function getTasksByProjectId(projectId: string) {
       labels: {
         with: { label: true },
       },
+      attachments: true,
     },
   })
 }
@@ -43,6 +48,7 @@ export async function getTasksByListId(listId: string) {
       labels: {
         with: { label: true },
       },
+      attachments: true,
     },
   })
 }
@@ -62,6 +68,7 @@ export async function getTaskById(taskId: string) {
       labels: {
         with: { label: true },
       },
+      attachments: true,
       comments: {
         with: { user: true },
         orderBy: asc(tasks.createdAt),
@@ -80,7 +87,8 @@ export async function createTask(
   listId: string,
   projectId: string,
   createdById: string,
-  labelNames?: string[]
+  labelNames?: string[],
+  attachments?: AttachmentInput[]
 ) {
   const [targetList] = await db
     .select({ type: lists.type })
@@ -118,38 +126,33 @@ export async function createTask(
     throw new Error("Failed to create task. Database returned undefined.")
   }
 
+  // Handle Labels
   if (labelNames && labelNames.length > 0) {
-    // a. Find existing labels in this project that match the names
     const existingLabels = await db
       .select({ id: labels.id, name: labels.name })
       .from(labels)
       .where(and(eq(labels.projectId, projectId), inArray(labels.name, labelNames)))
 
-    // b. Determine which labels need to be created
     const existingLabelNames = existingLabels.map((l) => l.name)
     const newLabelNames = labelNames.filter((name) => !existingLabelNames.includes(name))
 
     let newCreatedLabels: { id: string }[] = []
 
-    // c. Insert new labels
     if (newLabelNames.length > 0) {
       const labelsToInsert = newLabelNames.map((name) => ({
         projectId,
         name,
-        // Optional: you could randomly generate a color here, or hardcode a default
         color: "#6B7280",
       }))
 
       newCreatedLabels = await db.insert(labels).values(labelsToInsert).returning({ id: labels.id })
     }
 
-    // d. Combine all label IDs (existing + newly created)
     const allLabelIdsToLink = [
       ...existingLabels.map((l) => l.id),
       ...newCreatedLabels.map((l) => l.id),
     ]
 
-    // e. Link them to the task in the join table
     if (allLabelIdsToLink.length > 0) {
       const taskLabelsToInsert = allLabelIdsToLink.map((labelId) => ({
         taskId: task.id,
@@ -158,6 +161,33 @@ export async function createTask(
 
       await db.insert(taskLabels).values(taskLabelsToInsert)
     }
+  }
+
+  // Handle Attachments
+  if (attachments && attachments.length > 0) {
+    const attachmentsToInsert = attachments.map((att) => ({
+      taskId: task.id,
+      url: att.url,
+      name: att.name,
+      size: att.size || 0,
+      type: att.type || "application/octet-stream",
+      uploadedById: createdById,
+    }))
+    await db.insert(taskAttachments).values(attachmentsToInsert)
+
+    // Log attachment activity separately from the "created" log
+    await db.insert(activityLogs).values({
+      projectId,
+      userId: createdById,
+      action: "updated",
+      entityType: "task",
+      entityId: task.id,
+      metadata: {
+        type: "attachments_added",
+        fileNames: attachments.map((a) => a.name),
+        count: attachments.length,
+      },
+    })
   }
 
   await db.insert(activityLogs).values({
@@ -180,7 +210,8 @@ export async function createTask(
 export async function updateTask(
   taskId: string,
   data: Partial<Pick<NewTask, "title" | "description" | "priority" | "startDate" | "dueDate">>,
-  userId: string
+  userId: string,
+  labelNames?: string[]
 ) {
   const [updated] = await db
     .update(tasks)
@@ -192,8 +223,54 @@ export async function updateTask(
     .returning()
 
   if (updated) {
+    const projectId = updated.projectId
+
+    // Handle Labels (Wipe and replace)
+    if (labelNames !== undefined) {
+      await db.delete(taskLabels).where(eq(taskLabels.taskId, taskId))
+
+      if (labelNames.length > 0) {
+        const existingLabels = await db
+          .select({ id: labels.id, name: labels.name })
+          .from(labels)
+          .where(and(eq(labels.projectId, projectId), inArray(labels.name, labelNames)))
+
+        const existingLabelNames = existingLabels.map((l) => l.name)
+        const newLabelNames = labelNames.filter((name) => !existingLabelNames.includes(name))
+
+        let newCreatedLabels: { id: string }[] = []
+
+        if (newLabelNames.length > 0) {
+          const labelsToInsert = newLabelNames.map((name) => ({
+            projectId,
+            name,
+            color: "#6B7280",
+          }))
+
+          newCreatedLabels = await db
+            .insert(labels)
+            .values(labelsToInsert)
+            .returning({ id: labels.id })
+        }
+
+        const allLabelIdsToLink = [
+          ...existingLabels.map((l) => l.id),
+          ...newCreatedLabels.map((l) => l.id),
+        ]
+
+        if (allLabelIdsToLink.length > 0) {
+          const taskLabelsToInsert = allLabelIdsToLink.map((labelId) => ({
+            taskId,
+            labelId,
+          }))
+
+          await db.insert(taskLabels).values(taskLabelsToInsert)
+        }
+      }
+    }
+
     await db.insert(activityLogs).values({
-      projectId: updated.projectId,
+      projectId,
       userId,
       action: "updated",
       entityType: "task",
@@ -201,13 +278,96 @@ export async function updateTask(
       metadata: data,
     })
 
-    await db
-      .update(projects)
-      .set({ updatedAt: new Date() })
-      .where(eq(projects.id, updated.projectId))
+    await db.update(projects).set({ updatedAt: new Date() }).where(eq(projects.id, projectId))
   }
 
   return updated ?? null
+}
+
+/**
+ * Add attachments to a task (append, not replace).
+ */
+export async function addTaskAttachments(
+  taskId: string,
+  projectId: string,
+  userId: string,
+  attachments: AttachmentInput[]
+) {
+  if (attachments.length === 0) return []
+
+  const attachmentsToInsert = attachments.map((att) => ({
+    taskId,
+    url: att.url,
+    name: att.name,
+    size: att.size || 0,
+    type: att.type || "application/octet-stream",
+    uploadedById: userId,
+  }))
+
+  const inserted = await db.insert(taskAttachments).values(attachmentsToInsert).returning()
+
+  // Log activity for each file added
+  await db.insert(activityLogs).values({
+    projectId,
+    userId,
+    action: "updated",
+    entityType: "task",
+    entityId: taskId,
+    metadata: {
+      type: "attachments_added",
+      fileNames: attachments.map((a) => a.name),
+      count: attachments.length,
+    },
+  })
+
+  await db.update(projects).set({ updatedAt: new Date() }).where(eq(projects.id, projectId))
+
+  return inserted
+}
+
+/**
+ * Delete a single attachment (only the uploader can delete).
+ */
+export async function deleteTaskAttachment(
+  attachmentId: string,
+  taskId: string,
+  projectId: string,
+  userId: string
+) {
+  // Verify the attachment exists and belongs to the user
+  const [attachment] = await db
+    .select()
+    .from(taskAttachments)
+    .where(
+      and(
+        eq(taskAttachments.id, attachmentId),
+        eq(taskAttachments.taskId, taskId),
+        eq(taskAttachments.uploadedById, userId)
+      )
+    )
+    .limit(1)
+
+  if (!attachment) {
+    throw new Error("Attachment not found or you do not have permission to delete it.")
+  }
+
+  await db.delete(taskAttachments).where(eq(taskAttachments.id, attachmentId))
+
+  await db.insert(activityLogs).values({
+    projectId,
+    userId,
+    action: "updated",
+    entityType: "task",
+    entityId: taskId,
+    metadata: {
+      type: "attachment_deleted",
+      fileName: attachment.name,
+    },
+  })
+
+  await db.update(projects).set({ updatedAt: new Date() }).where(eq(projects.id, projectId))
+
+  return attachment
 }
 
 /**
@@ -241,7 +401,6 @@ export async function deleteTask(taskId: string, userId: string) {
 
 /**
  * Move a task to a different list and/or position.
- * Applies fractional ordering and enforces workflow rules.
  */
 export async function moveTask(
   taskId: string,
@@ -262,7 +421,7 @@ export async function moveTask(
   if (!currentTask) return null
 
   const [toList] = await db
-    .select({ title: lists.title, type: lists.type })
+    .select({ title: lists.title, type: lists.type, color: lists.color })
     .from(lists)
     .where(eq(lists.id, targetListId))
     .limit(1)
@@ -283,10 +442,9 @@ export async function moveTask(
     .where(eq(tasks.id, taskId))
     .returning()
 
-  // Only log if the list actually changed (not just reordering within same list)
   if (currentTask.listId !== targetListId) {
     const [fromList] = await db
-      .select({ title: lists.title })
+      .select({ title: lists.title, color: lists.color })
       .from(lists)
       .where(eq(lists.id, currentTask.listId))
       .limit(1)
@@ -300,7 +458,9 @@ export async function moveTask(
       metadata: {
         taskTitle: currentTask.title,
         from: fromList?.title ?? "Unknown",
+        fromColor: fromList?.color ?? null,
         to: toList?.title ?? "Unknown",
+        toColor: toList?.color ?? null,
         fromListId: currentTask.listId,
         toListId: targetListId,
         wasCompleted: isNowCompleted,
@@ -347,7 +507,6 @@ export async function toggleTaskCompletion(taskId: string, isCompleted: boolean,
  * Assign a user to a task.
  */
 export async function assignTask(taskId: string, assigneeUserId: string, assignedByUserId: string) {
-  // Get task's projectId for the activity log
   const [task] = await db
     .select({ projectId: tasks.projectId, title: tasks.title })
     .from(tasks)
@@ -414,7 +573,6 @@ export async function unassignTask(
 
 /**
  * Reorder tasks within a list (batch position update).
- * Used by dnd-kit after drag-and-drop.
  */
 export async function reorderTasks(updates: { id: string; position: number }[]) {
   await Promise.all(
@@ -424,7 +582,6 @@ export async function reorderTasks(updates: { id: string; position: number }[]) 
 
 /**
  * Get tasks assigned to a specific user across all projects.
- * Used for "My Tasks" views.
  */
 export async function getTasksByAssignee(userId: string) {
   const assignments = await db.query.taskAssignees.findMany({
@@ -440,10 +597,31 @@ export async function getTasksByAssignee(userId: string) {
           labels: {
             with: { label: true },
           },
+          attachments: true,
         },
       },
     },
   })
 
   return assignments.map((a) => a.task)
+}
+
+/**
+ * Fetch chronological activity logs for a specific task.
+ */
+export async function getTaskActivityLogs(taskId: string) {
+  return db.query.activityLogs.findMany({
+    where: and(eq(activityLogs.entityId, taskId), eq(activityLogs.entityType, "task")),
+    orderBy: desc(activityLogs.createdAt),
+    with: {
+      user: {
+        columns: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          imageUrl: true,
+        },
+      },
+    },
+  })
 }

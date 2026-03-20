@@ -12,7 +12,6 @@ const baseTaskSchema = z.object({
 
 export const createTaskSchema = baseTaskSchema.refine(
   (data) => {
-    // Example: your existing refinement logic goes here
     if (data.startDate && data.dueDate) {
       return data.dueDate >= data.startDate
     }
@@ -35,7 +34,6 @@ export const updateTaskSchema = baseTaskSchema
   .extend({
     isCompleted: z.boolean().optional(),
   })
-  // If updateTaskSchema also needs the date validation, add it here too!
   .refine(
     (data) => {
       if (data.startDate && data.dueDate) {
@@ -60,7 +58,16 @@ export const assignTaskSchema = z.object({
   assigneeUserId: z.string().min(1, "User ID is required"),
 })
 
+/** Standalone schema for attachment metadata (used after UploadThing upload) */
+export const attachmentMetadataSchema = z.object({
+  url: z.string().url(),
+  name: z.string().min(1),
+  size: z.number(),
+  type: z.string(),
+})
+
 export type CreateTaskInput = z.infer<typeof createTaskSchema>
 export type UpdateTaskInput = z.infer<typeof updateTaskSchema>
 export type MoveTaskInput = z.infer<typeof moveTaskSchema>
 export type AssignTaskInput = z.infer<typeof assignTaskSchema>
+export type AttachmentMetadata = z.infer<typeof attachmentMetadataSchema>

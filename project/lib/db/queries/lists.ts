@@ -24,6 +24,7 @@ export async function getListsByProjectId(projectId: string) {
               label: true,
             },
           },
+          attachments: true,
         },
       },
     },

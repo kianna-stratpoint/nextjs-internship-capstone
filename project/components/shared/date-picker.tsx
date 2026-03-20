@@ -1,7 +1,6 @@
 "use client"
 
 import * as React from "react"
-import { format } from "date-fns"
 import { CalendarIcon } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -26,6 +25,15 @@ export function DatePicker({
   className,
   disabledDates,
 }: DatePickerProps) {
+  // Helper to format the date natively (Replaces date-fns "PPP")
+  const formatDate = (date: Date) => {
+    return date.toLocaleDateString("en-US", {
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    })
+  }
+
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -39,8 +47,7 @@ export function DatePicker({
           )}
         >
           <CalendarIcon className="mr-2 h-4 w-4 text-muted-foreground" />
-
-          {value ? format(value, "PPP") : placeholder}
+          {value ? formatDate(value) : placeholder}
         </Button>
       </PopoverTrigger>
 

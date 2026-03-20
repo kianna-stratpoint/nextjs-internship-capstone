@@ -16,6 +16,16 @@ export async function getCommentsByTaskId(taskId: string) {
 }
 
 /**
+ * Get a single comment by ID (useful for ownership checks).
+ */
+export async function getCommentById(commentId: string) {
+  return db.query.comments.findFirst({
+    where: eq(comments.id, commentId),
+    with: { task: true },
+  })
+}
+
+/**
  * Create a comment on a task.
  */
 export async function createComment(taskId: string, userId: string, content: string) {
@@ -75,4 +85,17 @@ export async function deleteComment(commentId: string, userId: string) {
       preview: comment.content.slice(0, 100),
     },
   })
+}
+
+/**
+ * Update a comment.
+ */
+export async function updateComment(commentId: string, content: string) {
+  const [updatedComment] = await db
+    .update(comments)
+    .set({ content })
+    .where(eq(comments.id, commentId))
+    .returning()
+
+  return updatedComment
 }

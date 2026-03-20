@@ -1,67 +1,3 @@
-// TODO: Task 4.4 - Build task creation and editing functionality
-// TODO: Task 5.4 - Implement optimistic UI updates for smooth interactions
-
-/*
-TODO: Implementation Notes for Interns:
-
-Custom hook for task data management:
-- Fetch tasks for a project
-- Create new task
-- Update task
-- Delete task
-- Move task between lists
-- Bulk operations
-
-Features:
-- Optimistic updates for smooth UX
-- Real-time synchronization
-- Conflict resolution
-- Undo functionality
-- Batch operations
-
-Example structure:
-export function useTasks(projectId: string) {
-  const queryClient = useQueryClient()
-  
-  const {
-    data: tasks,
-    isLoading,
-    error
-  } = useQuery({
-    queryKey: ['tasks', projectId],
-    queryFn: () => queries.tasks.getByProject(projectId),
-    enabled: !!projectId
-  })
-  
-  const createTask = useMutation({
-    mutationFn: queries.tasks.create,
-    onMutate: async (newTask) => {
-      // Optimistic update
-      await queryClient.cancelQueries({ queryKey: ['tasks', projectId] })
-      const previousTasks = queryClient.getQueryData(['tasks', projectId])
-      queryClient.setQueryData(['tasks', projectId], (old: Task[]) => [...old, { ...newTask, id: 'temp-' + Date.now() }])
-      return { previousTasks }
-    },
-    onError: (err, newTask, context) => {
-      // Rollback on error
-      queryClient.setQueryData(['tasks', projectId], context?.previousTasks)
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['tasks', projectId] })
-    }
-  })
-  
-  return {
-    tasks,
-    isLoading,
-    error,
-    createTask: createTask.mutate,
-    isCreating: createTask.isPending
-  }
-}
-*/
-
-// Placeholder to prevent import errors
 "use client"
 
 import { useMutation, useQueryClient } from "@tanstack/react-query"
@@ -72,6 +8,8 @@ import {
   deleteTaskAction,
   moveTaskAction,
   rebalanceTasksAction,
+  addTaskAttachmentsAction,
+  deleteTaskAttachmentAction,
 } from "@/lib/actions/tasks"
 import type { ListWithTasks, TaskWithAssignees } from "@/types"
 
@@ -89,7 +27,6 @@ export function useTasks(projectId: string) {
     queryClient.setQueriesData({ queryKey: projectsQueryKey }, (oldData: any) => {
       if (!oldData) return oldData
 
-      // If cached data is an array of projects
       if (Array.isArray(oldData)) {
         return oldData.map((p) => {
           if (p.id === projectId) {
@@ -113,7 +50,6 @@ export function useTasks(projectId: string) {
   }
 
   const createMutation = useMutation({
-    // 1. Transform the plain object into FormData for the server action
     mutationFn: async (data: any) => {
       const formData = new FormData()
       formData.append("title", data.title)
@@ -125,7 +61,6 @@ export function useTasks(projectId: string) {
 
       return await createTaskAction(formData)
     },
-    // 2. The optimistic update still gets the plain object (data), so this works perfectly!
     onMutate: async (newTaskData) => {
       await queryClient.cancelQueries({ queryKey })
       const previousLists = queryClient.getQueryData<ListWithTasks[]>(queryKey)
@@ -137,7 +72,7 @@ export function useTasks(projectId: string) {
         title: newTaskData.title,
         description: newTaskData.description || null,
         priority: newTaskData.priority || "medium",
-        position: 999999, // Puts it at the bottom visually
+        position: 999999,
         isCompleted: false,
         completedAt: null,
         startDate: null,
@@ -166,7 +101,6 @@ export function useTasks(projectId: string) {
     },
     onSuccess: (result) => {
       if (result?.error) throw new Error(result.error)
-      // 3. This is what fixes your "needs a refresh" bug!
       queryClient.invalidateQueries({ queryKey })
       queryClient.invalidateQueries({ queryKey: projectsQueryKey })
       toast({ title: "Task created" })
@@ -197,7 +131,6 @@ export function useTasks(projectId: string) {
         }
       }
 
-      // ✅ Always run this to bump the timestamp, passing the calculated completedDelta
       const previousProjects = updateProjectCache(0, completedDelta)
 
       queryClient.setQueryData<ListWithTasks[]>(queryKey, (old) => {
@@ -260,14 +193,11 @@ export function useTasks(projectId: string) {
   })
 
   const moveMutation = useMutation({
-    // 1. Check for the server error HERE so React Query catches it
     mutationFn: async (data: { taskId: string; listId: string; position: number }) => {
-      // Note: If your Server Action schema expects projectId inside the object,
-      // change `data` to `{ ...data, projectId }`
       const result = await moveTaskAction(data, projectId)
 
       if (result?.error) {
-        throw new Error(result.error) // This now correctly triggers onError!
+        throw new Error(result.error)
       }
 
       return result
@@ -289,7 +219,6 @@ export function useTasks(projectId: string) {
 
         if (!taskToMove) return old
 
-        // Remove from old list, add to new list, and sort
         return old.map((list) => {
           let newTasks = list.tasks.filter((t) => t.id !== taskId)
 
@@ -305,12 +234,10 @@ export function useTasks(projectId: string) {
       return { previousLists, previousProjects }
     },
     onSuccess: () => {
-      // 2. Clean success block - only runs if no error was thrown above
       queryClient.invalidateQueries({ queryKey })
       queryClient.invalidateQueries({ queryKey: ["projects"] })
     },
     onError: (err: any, _, context) => {
-      // 3. This will finally run and show us the ghost!
       queryClient.setQueryData(queryKey, context?.previousLists)
       queryClient.setQueryData(projectsQueryKey, context?.previousProjects)
       toast({ variant: "destructive", title: "Failed to move task", description: err.message })
@@ -321,7 +248,6 @@ export function useTasks(projectId: string) {
     mutationFn: (listId: string) => rebalanceTasksAction(listId, projectId),
     onSuccess: (result) => {
       if (result?.error) throw new Error(result.error)
-      // Force the UI to refetch the freshly spaced tasks
       queryClient.invalidateQueries({ queryKey })
     },
     onError: (err: any) => {
@@ -329,6 +255,56 @@ export function useTasks(projectId: string) {
         variant: "destructive",
         title: "Background sync failed",
         description: "Failed to rebalance task positions, but your tasks are still safe.",
+      })
+    },
+  })
+
+  // ── Attachment Mutations (no useUploadThing here — upload happens at component level) ──
+
+  const saveAttachmentsMutation = useMutation({
+    mutationFn: async ({
+      taskId,
+      attachments,
+    }: {
+      taskId: string
+      attachments: { url: string; name: string; size: number; type: string }[]
+    }) => {
+      const result = await addTaskAttachmentsAction(taskId, projectId, attachments)
+      if (!result.success) throw new Error(result.error)
+      return result.data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey })
+      queryClient.invalidateQueries({ queryKey: ["task-activity"] })
+      queryClient.invalidateQueries({ queryKey: ["task-detail"] })
+      toast({ title: "Attachments uploaded" })
+    },
+    onError: (err: any) => {
+      toast({
+        variant: "destructive",
+        title: "Failed to save attachments",
+        description: err.message,
+      })
+    },
+  })
+
+  const deleteAttachmentMutation = useMutation({
+    mutationFn: async ({ attachmentId, taskId }: { attachmentId: string; taskId: string }) => {
+      const result = await deleteTaskAttachmentAction(attachmentId, taskId, projectId)
+      if (!result.success) throw new Error(result.error)
+      return result
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey })
+      queryClient.invalidateQueries({ queryKey: ["task-activity"] })
+      queryClient.invalidateQueries({ queryKey: ["task-detail"] })
+      toast({ title: "Attachment deleted" })
+    },
+    onError: (err: any) => {
+      toast({
+        variant: "destructive",
+        title: "Failed to delete attachment",
+        description: err.message,
       })
     },
   })
@@ -344,5 +320,10 @@ export function useTasks(projectId: string) {
     isMovingTask: moveMutation.isPending,
     rebalanceTasks: rebalanceMutation.mutateAsync,
     isRebalancing: rebalanceMutation.isPending,
+    // Attachments
+    saveAttachments: saveAttachmentsMutation.mutateAsync,
+    isSavingAttachments: saveAttachmentsMutation.isPending,
+    deleteAttachment: deleteAttachmentMutation.mutateAsync,
+    isDeletingAttachment: deleteAttachmentMutation.isPending,
   }
 }

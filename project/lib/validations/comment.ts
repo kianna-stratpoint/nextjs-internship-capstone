@@ -9,3 +9,13 @@ export const createCommentSchema = z.object({
 })
 
 export type CreateCommentInput = z.infer<typeof createCommentSchema>
+
+export const updateCommentSchema = z.object({
+  commentId: z.string().uuid("Invalid Comment ID"),
+  content: z
+    .string()
+    .min(1, "Comment cannot be empty")
+    .max(2000, "Comment must be 2000 characters or less"),
+})
+
+export type UpdateCommentInput = z.infer<typeof updateCommentSchema>

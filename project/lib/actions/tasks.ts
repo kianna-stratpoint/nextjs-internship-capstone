@@ -14,6 +14,9 @@ import {
   reorderTasks,
   getTaskById,
   getTasksByListId,
+  getTaskActivityLogs,
+  addTaskAttachments,
+  deleteTaskAttachment,
 } from "@/lib/db/queries/tasks"
 
 import { getUserProjectRole } from "@/lib/db/queries/projects"
@@ -24,7 +27,9 @@ import {
   moveTaskSchema,
   assignTaskSchema,
 } from "@/lib/validations/task"
-import { redirect } from "next/navigation"
+import { UTApi } from "uploadthing/server"
+
+const utapi = new UTApi()
 
 /**
  * Create a new task
@@ -52,15 +57,16 @@ export async function createTaskAction(data: unknown) {
 
     const labelsString = data.get("labels") as string
     const labels = labelsString ? JSON.parse(labelsString) : []
-    const attachments = data.getAll("attachments") // Array of File objects
+
+    const attachmentsString = data.get("attachments") as string
+    const attachments = attachmentsString ? JSON.parse(attachmentsString) : []
 
     const role = await getUserProjectRole(projectId, userId)
     if (!role) return { success: false, error: "Unauthorized: Not a project member." }
     if (role === "viewer")
       return { success: false, error: "Unauthorized: Viewers cannot create tasks." }
 
-    // TO DO: Update `createTask` to accept attachments
-    const task = await createTask(taskData, listId, projectId, userId, labels)
+    const task = await createTask(taskData, listId, projectId, userId, labels, attachments)
 
     revalidatePath(`/projects/${projectId}`)
     return { success: true, data: task }
@@ -70,11 +76,14 @@ export async function createTaskAction(data: unknown) {
 }
 
 /**
- * Update an existing task
+ * Update an existing task (fields only — no attachment wipe-and-replace)
  */
 export async function updateTaskAction(taskId: string, projectId: string, data: unknown) {
   try {
     const { dbUserId: userId } = await requireAuth()
+
+    const payload = data as Record<string, any>
+    const labels = payload.labels || []
 
     const validatedData = updateTaskSchema.parse(data)
 
@@ -94,12 +103,76 @@ export async function updateTaskAction(taskId: string, projectId: string, data: 
       }
     }
 
-    const updatedTask = await updateTask(taskId, validatedData, userId)
+    const updatedTask = await updateTask(taskId, validatedData, userId, labels)
 
     revalidatePath(`/projects/${projectId}`)
     return { success: true, data: updatedTask }
   } catch (error) {
     return { success: false, error: "Failed to update task." }
+  }
+}
+
+/**
+ * Add attachments to a task (after uploading to UploadThing on client)
+ */
+export async function addTaskAttachmentsAction(
+  taskId: string,
+  projectId: string,
+  attachments: { url: string; name: string; size: number; type: string }[]
+) {
+  try {
+    const { dbUserId: userId } = await requireAuth()
+
+    const role = await getUserProjectRole(projectId, userId)
+    if (!role) return { success: false, error: "Unauthorized: Not a project member." }
+    if (role === "viewer")
+      return { success: false, error: "Unauthorized: Viewers cannot add attachments." }
+
+    const inserted = await addTaskAttachments(taskId, projectId, userId, attachments)
+
+    revalidatePath(`/projects/${projectId}`)
+    return { success: true, data: inserted }
+  } catch (error) {
+    return { success: false, error: "Failed to add attachments." }
+  }
+}
+
+/**
+ * Delete a single attachment (only uploader can delete; also removes from UploadThing)
+ */
+export async function deleteTaskAttachmentAction(
+  attachmentId: string,
+  taskId: string,
+  projectId: string
+) {
+  try {
+    const { dbUserId: userId } = await requireAuth()
+
+    const role = await getUserProjectRole(projectId, userId)
+    if (!role) return { success: false, error: "Unauthorized: Not a project member." }
+    if (role === "viewer")
+      return { success: false, error: "Unauthorized: Viewers cannot delete attachments." }
+
+    // This will throw if user is not the uploader
+    const deleted = await deleteTaskAttachment(attachmentId, taskId, projectId, userId)
+
+    // Clean up from UploadThing storage
+    if (deleted.url.includes("/f/")) {
+      const fileKey = deleted.url.split("/f/")[1] as string
+      try {
+        await utapi.deleteFiles([fileKey])
+      } catch (utError) {
+        // Don't block the DB delete if UT cleanup fails
+      }
+    }
+
+    revalidatePath(`/projects/${projectId}`)
+    return { success: true }
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error.message || "Failed to delete attachment.",
+    }
   }
 }
 
@@ -142,9 +215,6 @@ export async function moveTaskAction(data: unknown, projectId: string) {
     const { dbUserId: userId } = await requireAuth()
     const { taskId, listId, position } = moveTaskSchema.parse(data)
 
-    // 1. Check what the server is actually receiving
-    //console.log("SERVER RECEIVED:", { taskId, listId, position })
-
     const role = await getUserProjectRole(projectId, userId)
     if (!role) return { success: false, error: "Unauthorized: Not a project member." }
     if (role === "viewer")
@@ -152,13 +222,9 @@ export async function moveTaskAction(data: unknown, projectId: string) {
 
     const updatedTask = await moveTask(taskId, listId, position, userId)
 
-    // 2. Check what the database actually returned
-    //console.log("DB RETURNED:", updatedTask)
-
     revalidatePath(`/projects/${projectId}`, "layout")
     return { success: true, data: updatedTask }
   } catch (error) {
-    //console.error("MOVE TASK ACTION ERROR:", error)
     return { success: false, error: "Failed to move task." }
   }
 }
@@ -265,31 +331,51 @@ export async function rebalanceTasksAction(listId: string, projectId: string) {
   try {
     const { dbUserId: userId } = await requireAuth()
 
-    // 1. Enforce RBAC rules
     const role = await getUserProjectRole(projectId, userId)
     if (!role) return { success: false, error: "Unauthorized: Not a project member." }
     if (role === "viewer")
       return { success: false, error: "Unauthorized: Viewers cannot reorder tasks." }
 
-    // 2. Fetch using your existing cleanly abstracted query
     const existingTasks = await getTasksByListId(listId)
 
     if (!existingTasks || existingTasks.length === 0) {
       return { success: true }
     }
 
-    // 3. Map through them (TypeScript now perfectly understands what 'task' and 'index' are)
     const updates = existingTasks.map((task, index) => ({
       id: task.id,
-      position: (index + 1) * 1024, // Matches your createTask +1024 spacing
+      position: (index + 1) * 1024,
     }))
 
-    // 4. Update the DB using your existing batch reorder query
     await reorderTasks(updates)
 
     revalidatePath(`/projects/${projectId}`)
     return { success: true }
   } catch (error) {
     return { success: false, error: "Failed to rebalance task positions." }
+  }
+}
+
+export async function getTaskActivityLogsAction(taskId: string) {
+  try {
+    const logs = await getTaskActivityLogs(taskId)
+    return { data: logs }
+  } catch (error) {
+    return { error: "Failed to fetch activity logs" }
+  }
+}
+
+/**
+ * Get a single task with full details (attachments, labels, assignees, comments).
+ * Used by TaskSheet to get fresh data independent of the board's list query.
+ */
+export async function getTaskByIdAction(taskId: string) {
+  try {
+    await requireAuth()
+    const task = await getTaskById(taskId)
+    if (!task) return { error: "Task not found" }
+    return { data: task }
+  } catch (error) {
+    return { error: "Failed to fetch task details" }
   }
 }

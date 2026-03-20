@@ -65,6 +65,9 @@ export function KanbanBoard({ project, initialLists, currentUserId }: KanbanBoar
     updateTask,
     moveTask,
     rebalanceTasks,
+    saveAttachments,
+    deleteAttachment,
+    isDeletingAttachment,
   } = useTasks(projectId)
   const {
     lists: queryLists,
@@ -743,6 +746,9 @@ export function KanbanBoard({ project, initialLists, currentUserId }: KanbanBoar
         onClose={() => setSelectedTask(null)}
         updateTask={handleUpdateTask}
         lists={storeLists}
+        saveAttachments={saveAttachments}
+        deleteAttachment={deleteAttachment}
+        isDeletingAttachment={isDeletingAttachment}
       />
     </>
   )

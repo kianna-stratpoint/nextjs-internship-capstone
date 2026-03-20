@@ -1,10 +1,10 @@
 "use client"
 
-import { Calendar, MoreHorizontal, Edit, Copy, Trash, User } from "lucide-react" // <-- Added User
+import { Calendar, MoreHorizontal, Edit, Copy, Trash, User } from "lucide-react"
 import { TaskWithAssignees } from "@/types"
 import { useSortable } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
-import DOMPurify from "isomorphic-dompurify"
+import DOMPurify from "dompurify"
 
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -93,6 +93,9 @@ export function TaskCard({ task, onClick, onDelete, isOverlay }: TaskCardProps) 
     })
   }
 
+  const sanitizedDescription =
+    typeof window !== "undefined" ? DOMPurify.sanitize(task.description || "") : ""
+
   if (isOverlay) {
     return (
       <div className="flex rotate-2 cursor-grabbing flex-col gap-3 rounded-md border bg-card p-3 opacity-90 shadow-xl ring-2 ring-primary">
@@ -108,7 +111,7 @@ export function TaskCard({ task, onClick, onDelete, isOverlay }: TaskCardProps) 
       {...attributes}
       {...listeners}
       onClick={() => onClick?.(task)}
-      className={`group relative mb-2 flex cursor-pointer flex-col gap-3 rounded-md border bg-card p-3 shadow-sm transition-all hover:ring-1 hover:ring-primary ${
+      className={`group relative mb-2 flex cursor-pointer flex-col gap-3 rounded-md border border-muted-foreground/20 bg-card p-3 shadow-sm transition-all hover:ring-1 hover:ring-primary ${
         task.isCompleted ? "opacity-60" : "opacity-100"
       }`}
     >
@@ -163,12 +166,11 @@ export function TaskCard({ task, onClick, onDelete, isOverlay }: TaskCardProps) 
         </DropdownMenu>
       </div>
 
-      {/* Description */}
       {task.description && (
         <div
           className="line-clamp-2 text-xs text-muted-foreground [&>*]:m-0"
           dangerouslySetInnerHTML={{
-            __html: DOMPurify.sanitize(task.description),
+            __html: sanitizedDescription,
           }}
         />
       )}

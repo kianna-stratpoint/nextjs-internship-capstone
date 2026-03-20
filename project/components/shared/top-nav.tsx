@@ -1,8 +1,38 @@
 "use client"
 
+import dynamic from "next/dynamic"
 import { ClerkLoading, ClerkLoaded, UserButton } from "@clerk/nextjs"
 import { ThemeToggle } from "@/components/shared/theme-toggle"
 import { Menu, Bell } from "lucide-react"
+
+const ClerkUserButton = dynamic(
+  () =>
+    import("@clerk/nextjs").then((mod) => {
+      const { ClerkLoading, ClerkLoaded, UserButton } = mod
+      return function ClerkUser() {
+        return (
+          <>
+            <ClerkLoading>
+              <div className="h-8 w-8 animate-pulse rounded-full bg-muted" />
+            </ClerkLoading>
+            <ClerkLoaded>
+              <UserButton
+                appearance={{
+                  elements: {
+                    avatarBox: "h-8 w-8",
+                  },
+                }}
+              />
+            </ClerkLoaded>
+          </>
+        )
+      }
+    }),
+  {
+    ssr: false,
+    loading: () => <div className="h-8 w-8 animate-pulse rounded-full bg-muted" />,
+  }
+)
 
 interface TopNavProps {
   onMenuClick: () => void
@@ -28,19 +58,7 @@ export function TopNav({ onMenuClick }: TopNavProps) {
           <Bell size={18} />
         </button>
 
-        <ClerkLoading>
-          <div className="h-8 w-8 animate-pulse rounded-full bg-muted" />
-        </ClerkLoading>
-
-        <ClerkLoaded>
-          <UserButton
-            appearance={{
-              elements: {
-                avatarBox: "h-8 w-8",
-              },
-            }}
-          />
-        </ClerkLoaded>
+        <ClerkUserButton />
       </div>
     </header>
   )

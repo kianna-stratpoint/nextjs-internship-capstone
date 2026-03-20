@@ -1,6 +1,7 @@
 import Link from "next/link"
 import { requireAuth } from "@/lib/auth"
 import { getActivityForUser } from "@/lib/db/queries/activity"
+import { timeAgo } from "@/lib/utils"
 
 // --- Types ---
 
@@ -37,16 +38,6 @@ function getInitials(firstName: string | null, lastName: string | null) {
   const first = firstName?.[0] || ""
   const last = lastName?.[0] || ""
   return (first + last).toUpperCase() || "U"
-}
-
-function formatRelativeTime(date: Date) {
-  const now = new Date()
-  const diffInSeconds = Math.floor((now.getTime() - new Date(date).getTime()) / 1000)
-
-  if (diffInSeconds < 60) return "Just now"
-  if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} min. ago`
-  if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} hr. ago`
-  return `${Math.floor(diffInSeconds / 86400)} days ago`
 }
 
 // 3. Apply the types to the function parameters
@@ -124,7 +115,7 @@ export async function RecentActivity() {
               activity.entityType,
               activity.metadata as ActivityMetadata | null
             )
-            const timeAgo = formatRelativeTime(activity.createdAt)
+            const timeAgoString = timeAgo(activity.createdAt)
 
             return (
               <div
@@ -143,7 +134,7 @@ export async function RecentActivity() {
                       <span className="text-muted-foreground">{actionMessage}</span>
                     </p>
                     <p className="mt-0.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                      {timeAgo}
+                      {timeAgoString}
                       <span className="opacity-40">&bull;</span>
 
                       {/* Link to the project */}

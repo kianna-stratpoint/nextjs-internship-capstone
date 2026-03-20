@@ -1,43 +1,9 @@
-// TODO: Task 4.4 - Build task creation and editing functionality
-// TODO: Task 5.6 - Create task detail modals and editing interfaces
-
-/*
-TODO: Implementation Notes for Interns:
-
-Modal for creating and editing tasks.
-
-Features to implement:
-- Task title and description
-- Priority selection
-- Assignee selection
-- Due date picker
-- Labels/tags
-- Attachments
-- Comments section (for edit mode)
-- Activity history (for edit mode)
-
-Form fields:
-- Title (required)
-- Description (rich text editor)
-- Priority (low/medium/high)
-- Assignee (team member selector)
-- Due date (date picker)
-- Labels (tag input)
-- Attachments (file upload)
-
-Integration:
-- Use task validation schema
-- Call task creation/update API
-- Update board state optimistically
-- Handle file uploads
-- Real-time updates for comments
-*/
-
 "use client"
 
 import { useState, useRef } from "react"
 import { useRouter } from "next/navigation"
-import { Loader2, X, Paperclip } from "lucide-react"
+import { Loader2, X, Paperclip, FileText, ImageIcon, File as FileIcon } from "lucide-react"
+
 import { useUIStore } from "@/stores/ui-store"
 import { useProjects } from "@/hooks/use-projects"
 import { useQuery } from "@tanstack/react-query"
@@ -54,7 +20,6 @@ import {
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
 import {
   Select,
   SelectContent,
@@ -65,9 +30,23 @@ import {
 import { DatePicker } from "@/components/shared/date-picker"
 import { RichTextEditor } from "@/components/shared/rich-text-editor"
 
+function formatFileSize(bytes: number): string {
+  if (bytes === 0) return "0 B"
+  const k = 1024
+  const sizes = ["B", "KB", "MB", "GB"]
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`
+}
+
+function getFileIcon(file: File) {
+  if (file.type.startsWith("image/")) return <ImageIcon className="h-4 w-4 text-blue-500" />
+  if (file.type === "application/pdf") return <FileText className="h-4 w-4 text-red-500" />
+  return <FileIcon className="h-4 w-4 text-muted-foreground" />
+}
+
 export function CreateTaskModal() {
   const { isCreateTaskModalOpen, closeCreateTaskModal } = useUIStore()
-  const { createGlobalTask } = useGlobalTaskCreator()
+  const { createGlobalTask, isUploading } = useGlobalTaskCreator()
   const router = useRouter()
 
   // Projects Data
@@ -87,7 +66,7 @@ export function CreateTaskModal() {
   const [labels, setLabels] = useState<string[]>([])
   const [labelInput, setLabelInput] = useState("")
 
-  // Files State
+  // Files State (stored locally until submit)
   const [files, setFiles] = useState<File[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -102,6 +81,8 @@ export function CreateTaskModal() {
     },
     enabled: !!projectId,
   })
+
+  const isBusy = createGlobalTask.isPending || isUploading
 
   // Handlers
   const handleAddLabel = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -122,10 +103,26 @@ export function CreateTaskModal() {
     if (e.target.files) {
       setFiles((prev) => [...prev, ...Array.from(e.target.files!)])
     }
+    // Reset the input so re-selecting the same file works
+    if (fileInputRef.current) fileInputRef.current.value = ""
   }
 
   const removeFile = (index: number) => {
     setFiles((prev) => prev.filter((_, i) => i !== index))
+  }
+
+  const resetForm = () => {
+    setTitle("")
+    setDescription("")
+    setProjectId("")
+    setListId("")
+    setPriority("none")
+    setStartDate(undefined)
+    setDueDate(undefined)
+    setLabels([])
+    setLabelInput("")
+    setFiles([])
+    setDueDateError(null)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -136,9 +133,9 @@ export function CreateTaskModal() {
       setDueDateError("Due date cannot be earlier than the start date.")
       return
     }
-
     setDueDateError(null)
 
+    // Build FormData (without files — those go through uploadthing)
     const formData = new FormData()
     formData.append("title", title)
     formData.append("description", description)
@@ -147,21 +144,26 @@ export function CreateTaskModal() {
     if (priority && priority !== "none") formData.append("priority", priority)
     if (startDate) formData.append("startDate", startDate.toISOString())
     if (dueDate) formData.append("dueDate", dueDate.toISOString())
-
-    // Append arrays/files
     formData.append("labels", JSON.stringify(labels))
-    files.forEach((file) => formData.append("attachments", file))
 
-    createGlobalTask.mutate(formData, {
-      onSuccess: () => {
-        closeCreateTaskModal()
-        router.push(`/projects/${projectId}`) // Redirect to the Kanban board
-      },
-    })
+    // Pass files separately — hook uploads them via uploadthing first
+    createGlobalTask.mutate(
+      { formData, files },
+      {
+        onSuccess: () => {
+          resetForm()
+          closeCreateTaskModal()
+          router.push(`/projects/${projectId}`)
+        },
+      }
+    )
   }
 
   const handleClose = () => {
-    if (!createGlobalTask.isPending) closeCreateTaskModal()
+    if (!isBusy) {
+      resetForm()
+      closeCreateTaskModal()
+    }
   }
 
   return (
@@ -187,7 +189,7 @@ export function CreateTaskModal() {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="e.g., Update landing page copy"
-              disabled={createGlobalTask.isPending}
+              disabled={isBusy}
             />
           </div>
 
@@ -198,7 +200,7 @@ export function CreateTaskModal() {
               value={description}
               onChange={setDescription}
               placeholder="Add more details to this task..."
-              disabled={createGlobalTask.isPending}
+              disabled={isBusy}
             />
           </div>
 
@@ -214,7 +216,7 @@ export function CreateTaskModal() {
                   setProjectId(value)
                   setListId("")
                 }}
-                disabled={isLoadingProjects || createGlobalTask.isPending}
+                disabled={isLoadingProjects || isBusy}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select a project" />
@@ -236,7 +238,7 @@ export function CreateTaskModal() {
               <Select
                 value={listId}
                 onValueChange={setListId}
-                disabled={!projectId || isLoadingLists || createGlobalTask.isPending}
+                disabled={!projectId || isLoadingLists || isBusy}
               >
                 <SelectTrigger>
                   <SelectValue
@@ -258,11 +260,7 @@ export function CreateTaskModal() {
           <div className="grid grid-cols-3 gap-4">
             <div className="space-y-2">
               <label className="text-sm font-medium text-foreground">Priority</label>
-              <Select
-                value={priority}
-                onValueChange={setPriority}
-                disabled={createGlobalTask.isPending}
-              >
+              <Select value={priority} onValueChange={setPriority} disabled={isBusy}>
                 <SelectTrigger>
                   <SelectValue placeholder="Priority" />
                 </SelectTrigger>
@@ -274,15 +272,17 @@ export function CreateTaskModal() {
                 </SelectContent>
               </Select>
             </div>
+
             <div className="space-y-2">
               <label className="text-sm font-medium text-foreground">Start Date</label>
               <DatePicker
                 value={startDate}
                 onChange={setStartDate}
-                disabled={createGlobalTask.isPending}
+                disabled={isBusy}
                 placeholder="Start date"
               />
             </div>
+
             <div className="space-y-2">
               <label className="text-sm font-medium text-foreground">Due Date</label>
               <DatePicker
@@ -291,7 +291,7 @@ export function CreateTaskModal() {
                   setDueDate(date)
                   if (dueDateError) setDueDateError(null)
                 }}
-                disabled={createGlobalTask.isPending}
+                disabled={isBusy}
                 disabledDates={(date) => (startDate ? date < startDate : false)}
                 placeholder="Due date"
               />
@@ -324,28 +324,32 @@ export function CreateTaskModal() {
               onChange={(e) => setLabelInput(e.target.value)}
               onKeyDown={handleAddLabel}
               placeholder="Type a label and press Enter..."
-              disabled={createGlobalTask.isPending}
+              disabled={isBusy}
             />
           </div>
 
-          {/* Attachments (Native) */}
+          {/* Attachments */}
           <div className="space-y-2">
             <label className="text-sm font-medium text-foreground">Attachments</label>
             <div
               className="flex cursor-pointer items-center gap-3 rounded-md border border-dashed border-border p-4 transition-colors hover:bg-accent/50"
-              onClick={() => fileInputRef.current?.click()}
+              onClick={() => !isBusy && fileInputRef.current?.click()}
             >
               <Paperclip size={18} className="text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">Click to upload files</span>
+              <span className="text-sm text-muted-foreground">
+                Click to select files (images up to 4MB, PDFs up to 8MB)
+              </span>
               <input
                 type="file"
                 multiple
+                accept="image/*,.pdf"
                 ref={fileInputRef}
                 onChange={handleFileChange}
                 className="hidden"
-                disabled={createGlobalTask.isPending}
+                disabled={isBusy}
               />
             </div>
+
             {files.length > 0 && (
               <ul className="mt-2 space-y-1">
                 {files.map((file, idx) => (
@@ -353,7 +357,11 @@ export function CreateTaskModal() {
                     key={idx}
                     className="flex items-center justify-between rounded bg-muted/50 p-2 text-xs text-foreground"
                   >
-                    <span className="max-w-[80%] truncate">{file.name}</span>
+                    <div className="flex items-center gap-2 overflow-hidden">
+                      {getFileIcon(file)}
+                      <span className="max-w-[60%] truncate">{file.name}</span>
+                      <span className="text-muted-foreground">{formatFileSize(file.size)}</span>
+                    </div>
                     <button
                       type="button"
                       onClick={() => removeFile(idx)}
@@ -368,22 +376,12 @@ export function CreateTaskModal() {
           </div>
 
           <DialogFooter className="mt-8 border-t border-border pt-5">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleClose}
-              disabled={createGlobalTask.isPending}
-            >
+            <Button type="button" variant="outline" onClick={handleClose} disabled={isBusy}>
               Cancel
             </Button>
-            <Button
-              type="submit"
-              disabled={!title || !projectId || !listId || createGlobalTask.isPending}
-            >
-              {createGlobalTask.isPending ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : null}
-              {createGlobalTask.isPending ? "Creating..." : "Create Task"}
+            <Button type="submit" disabled={!title || !projectId || !listId || isBusy}>
+              {isBusy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              {isUploading ? "Uploading..." : isBusy ? "Creating..." : "Create Task"}
             </Button>
           </DialogFooter>
         </form>

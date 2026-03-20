@@ -4,7 +4,7 @@ import { getProjectById } from "@/lib/db/queries/projects"
 import { getListsByProjectId } from "@/lib/db/queries/lists"
 
 import { KanbanBoard } from "@/components/features/board/kanban-board"
-import { ProjectHeader } from "@/components/features/projects/project-header"
+import { ProjectHeaderClient } from "@/components/features/projects/project-header-client"
 
 import { Metadata } from "next"
 
@@ -53,7 +53,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
   return (
     <div className="flex h-[calc(100vh-4rem)] flex-col overflow-hidden bg-background">
       {/* INTERACTIVE HEADER COMPONENT */}
-      <ProjectHeader project={project} currentUserId={userId} />
+      <ProjectHeaderClient project={project} currentUserId={userId} />
 
       {/* KANBAN BOARD */}
       <div className="flex-1 overflow-x-auto overflow-y-hidden px-6 pb-6 pt-2">

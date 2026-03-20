@@ -225,6 +225,30 @@ export const tasks = pgTable(
   ]
 )
 
+/* ==================== TASK ATTACHMENTS ==================== */
+
+export const taskAttachments = pgTable(
+  "task_attachments",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    taskId: uuid("task_id")
+      .notNull()
+      .references(() => tasks.id, { onDelete: "cascade" }),
+    uploadedById: uuid("uploaded_by_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    url: text("url").notNull(),
+    size: integer("size").notNull(), // Size in bytes
+    type: text("type").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("task_attachments_task_idx").on(table.taskId),
+    index("task_attachments_user_idx").on(table.uploadedById),
+  ]
+)
+
 /* ==================== TASK ASSIGNEES ==================== */
 /* Many-to-many: a task can have multiple assignees */
 
@@ -459,6 +483,18 @@ export const tasksRelations = relations(tasks, ({ one, many }) => ({
   assignees: many(taskAssignees),
   labels: many(taskLabels),
   comments: many(comments),
+  attachments: many(taskAttachments),
+}))
+
+export const taskAttachmentsRelations = relations(taskAttachments, ({ one }) => ({
+  task: one(tasks, {
+    fields: [taskAttachments.taskId],
+    references: [tasks.id],
+  }),
+  uploadedBy: one(users, {
+    fields: [taskAttachments.uploadedById],
+    references: [users.id],
+  }),
 }))
 
 export const taskAssigneesRelations = relations(taskAssignees, ({ one }) => ({
@@ -556,6 +592,9 @@ export type NewLabel = typeof labels.$inferInsert
 
 export type TaskLabel = typeof taskLabels.$inferSelect
 export type NewTaskLabel = typeof taskLabels.$inferInsert
+
+export type TaskAttachment = typeof taskAttachments.$inferSelect
+export type NewTaskAttachment = typeof taskAttachments.$inferInsert
 
 export type Comment = typeof comments.$inferSelect
 export type NewComment = typeof comments.$inferInsert

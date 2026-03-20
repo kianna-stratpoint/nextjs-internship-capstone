@@ -33,8 +33,7 @@ interface ListColumnProps {
   hasDoneList: boolean
   doneListsCount: number
   currentUserId: string
-  isOverlay?: boolean // Used when this component is rendered inside the DragOverlay
-  // Actions passed from parent
+  isOverlay?: boolean
   onEditList: (id: string, data: any) => Promise<void>
   onDeleteClick: (list: any) => void
   onCreateTask: (listId: string, title: string, priority: string | null) => void
