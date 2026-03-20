@@ -57,6 +57,7 @@ interface KanbanBoardProps {
 
 export function KanbanBoard({ project, initialLists, currentUserId }: KanbanBoardProps) {
   useProjectChannel(project.id)
+  console.log("[Debug] useProjectChannel subscribed to:", project.id)
   const projectId = project?.id
 
   // --- HOOKS & STORE ---

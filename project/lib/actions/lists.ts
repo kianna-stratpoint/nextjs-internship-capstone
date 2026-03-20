@@ -5,8 +5,11 @@ import { eq, and, count } from "drizzle-orm"
 import { z } from "zod"
 
 import { db } from "@/lib/db"
-import { lists, projectMembers } from "@/lib/db/schema"
+import { lists } from "@/lib/db/schema"
 import { requireAuth } from "@/lib/auth"
+import { requirePermission } from "@/lib/permissions"
+import { broadcastToProject } from "@/lib/pusher/server"
+import { PUSHER_EVENTS } from "@/lib/pusher/events"
 import {
   getListsByProjectId,
   createList,
@@ -24,18 +27,6 @@ import {
   type ReorderListsInput,
 } from "@/lib/validations/list"
 
-// --- INTERNAL HELPER: RBAC Check ---
-async function verifyProjectAccess(projectId: string, userId: string) {
-  const [membership] = await db
-    .select({ role: projectMembers.role })
-    .from(projectMembers)
-    .where(and(eq(projectMembers.projectId, projectId), eq(projectMembers.userId, userId)))
-    .limit(1)
-
-  if (!membership) throw new Error("Unauthorized: Not a member of this project")
-  return membership.role
-}
-
 // Counts how many "done" lists currently exist in the project
 async function getDoneListCount(projectId: string) {
   const [res] = await db
@@ -46,16 +37,15 @@ async function getDoneListCount(projectId: string) {
   return res?.value ?? 0
 }
 
-// --- SERVER ACTIONS ---
 export async function getProjectListsAction(projectId: string) {
   try {
     const { dbUserId } = await requireAuth()
 
-    // Optional: Check if user has access to this project before returning data
-    await verifyProjectAccess(projectId, dbUserId)
+    const { error: permError } = await requirePermission(projectId, dbUserId, "list", "read")
+    if (permError) return { error: permError }
 
-    const lists = await getListsByProjectId(projectId)
-    return { data: lists }
+    const projectLists = await getListsByProjectId(projectId)
+    return { data: projectLists }
   } catch (error) {
     return { error: error instanceof Error ? error.message : "Failed to fetch lists" }
   }
@@ -66,25 +56,32 @@ export async function createListAction(data: CreateListInput) {
     const { dbUserId } = await requireAuth()
     const parsed = createListSchema.parse(data)
 
-    // Check RBAC (Viewers cannot create lists)
-    const role = await verifyProjectAccess(parsed.projectId, dbUserId)
-    if (role === "viewer") {
-      throw new Error("Unauthorized: Viewers cannot create lists")
-    }
+    const { error: permError } = await requirePermission(
+      parsed.projectId,
+      dbUserId,
+      "list",
+      "create"
+    )
+    if (permError) return { error: permError }
 
     if (parsed.type === "done") {
       const doneCount = await getDoneListCount(parsed.projectId)
       if (doneCount > 0) throw new Error("A 'Done' list already exists in this project.")
     }
 
-    // Mutate
     const list = await createList(
       { title: parsed.title, color: parsed.color, type: parsed.type },
       parsed.projectId,
       dbUserId
     )
 
-    // Revalidate
+    await broadcastToProject(parsed.projectId, PUSHER_EVENTS.LIST_CREATED, {
+      listId: list.id,
+      title: list.title,
+      position: list.position,
+      color: list.color,
+    })
+
     revalidatePath(`/projects/${parsed.projectId}`)
     return { list }
   } catch (error) {
@@ -98,19 +95,16 @@ export async function updateListAction(listId: string, projectId: string, data: 
     const { dbUserId } = await requireAuth()
     const parsed = updateListSchema.parse(data)
 
+    const { error: permError } = await requirePermission(projectId, dbUserId, "list", "update")
+    if (permError) return { error: permError }
+
     const [existingList] = await db
-      .select({ createdById: lists.createdById, type: lists.type })
+      .select({ type: lists.type })
       .from(lists)
       .where(eq(lists.id, listId))
       .limit(1)
 
     if (!existingList) throw new Error("List not found")
-
-    const role = await verifyProjectAccess(projectId, dbUserId)
-    if (role === "viewer") throw new Error("Unauthorized: Viewers cannot edit lists")
-    if (role === "contributor" && existingList.createdById !== dbUserId) {
-      throw new Error("Unauthorized: Contributors can only edit lists they created")
-    }
 
     if (parsed.type && parsed.type !== existingList.type) {
       if (parsed.type === "done") {
@@ -125,6 +119,11 @@ export async function updateListAction(listId: string, projectId: string, data: 
     }
 
     const updated = await updateList(listId, parsed, dbUserId)
+
+    await broadcastToProject(projectId, PUSHER_EVENTS.LIST_UPDATED, {
+      listId,
+      changes: parsed,
+    })
 
     revalidatePath(`/projects/${projectId}`)
     return { list: updated }
@@ -142,19 +141,16 @@ export async function deleteListAction(
   try {
     const { dbUserId } = await requireAuth()
 
+    const { error: permError } = await requirePermission(projectId, dbUserId, "list", "delete")
+    if (permError) return { error: permError }
+
     const [existingList] = await db
-      .select({ createdById: lists.createdById, type: lists.type })
+      .select({ type: lists.type })
       .from(lists)
       .where(eq(lists.id, listId))
       .limit(1)
 
     if (!existingList) throw new Error("List not found")
-
-    const role = await verifyProjectAccess(projectId, dbUserId)
-    if (role === "viewer") throw new Error("Unauthorized: Viewers cannot delete lists")
-    if (role === "contributor" && existingList.createdById !== dbUserId) {
-      throw new Error("Unauthorized: Contributors can only delete lists they created")
-    }
 
     if (existingList.type === "done") {
       const doneCount = await getDoneListCount(projectId)
@@ -163,6 +159,10 @@ export async function deleteListAction(
     }
 
     await deleteList(listId, dbUserId, migrationListId)
+
+    await broadcastToProject(projectId, PUSHER_EVENTS.LIST_DELETED, {
+      listId,
+    })
 
     revalidatePath(`/projects/${projectId}`)
     return { success: true }
@@ -175,12 +175,14 @@ export async function moveListAction(listId: string, projectId: string, position
   try {
     const { dbUserId } = await requireAuth()
 
-    const role = await verifyProjectAccess(projectId, dbUserId)
-    if (role === "viewer") {
-      throw new Error("Unauthorized: Viewers cannot reorder lists")
-    }
+    const { error: permError } = await requirePermission(projectId, dbUserId, "list", "reorder")
+    if (permError) return { error: permError }
 
     await moveList(listId, position, projectId, dbUserId)
+
+    await broadcastToProject(projectId, PUSHER_EVENTS.LIST_REORDERED, {
+      updates: [{ listId, position }],
+    })
 
     revalidatePath(`/projects/${projectId}`)
     return { success: true }
@@ -194,16 +196,15 @@ export async function reorderListsAction(projectId: string, data: ReorderListsIn
     const { dbUserId } = await requireAuth()
     const parsed = reorderListsSchema.parse(data)
 
-    // Check RBAC (Anyone but a viewer can reorganize the board)
-    const role = await verifyProjectAccess(projectId, dbUserId)
-    if (role === "viewer") {
-      throw new Error("Unauthorized: Viewers cannot reorder lists")
-    }
+    const { error: permError } = await requirePermission(projectId, dbUserId, "list", "reorder")
+    if (permError) return { error: permError }
 
-    // Mutate
     await reorderLists(parsed.updates)
 
-    // Revalidate
+    await broadcastToProject(projectId, PUSHER_EVENTS.LIST_REORDERED, {
+      updates: parsed.updates.map((u) => ({ listId: u.id, position: u.position })),
+    })
+
     revalidatePath(`/projects/${projectId}`)
     return { success: true }
   } catch (error) {

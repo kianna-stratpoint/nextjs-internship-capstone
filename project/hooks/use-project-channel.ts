@@ -7,11 +7,13 @@
    invalidates React Query caches when events
    arrive so the UI updates automatically.
 
-   Usage:
-     useProjectChannel(projectId)
-
-   That's it. Drop it into any component that
-   renders project data and it handles the rest.
+   IMPORTANT: Query keys here MUST match the keys
+   used in the actual hooks:
+   - use-lists.ts:       ["project-lists", projectId]
+   - use-projects.ts:    ["projects", ...]
+   - use-comments.ts:    ["comments", taskId]
+   - use-team-member.ts: ["members", projectId]
+   - use-invitations.ts: ["invitations", projectId]
    ============================================ */
 
 import { useEffect, useRef } from "react"
@@ -39,72 +41,95 @@ export function useProjectChannel(projectId: string | null) {
     const channel = pusher.subscribe(channelName)
     channelRef.current = channel
 
+    // Helper: invalidate the board data (lists + nested tasks)
+    const invalidateBoard = () => {
+      queryClient.invalidateQueries({ queryKey: ["project-lists", projectId] })
+    }
+
+    // Helper: invalidate the projects list (cards, stats, header)
+    const invalidateProjects = () => {
+      queryClient.invalidateQueries({ queryKey: ["projects"] })
+    }
+
     /* ==================== TASK EVENTS ==================== */
 
     channel.bind(PUSHER_EVENTS.TASK_CREATED, () => {
-      queryClient.invalidateQueries({ queryKey: ["tasks", projectId] })
-      queryClient.invalidateQueries({ queryKey: ["project", projectId] })
+      invalidateBoard()
+      invalidateProjects()
     })
 
-    channel.bind(PUSHER_EVENTS.TASK_UPDATED, () => {
-      queryClient.invalidateQueries({ queryKey: ["tasks", projectId] })
+    channel.bind(PUSHER_EVENTS.TASK_UPDATED, (data: any) => {
+      invalidateBoard()
+      if (data?.taskId) {
+        queryClient.invalidateQueries({ queryKey: ["task-detail", data.taskId] })
+        queryClient.invalidateQueries({ queryKey: ["task-activity", data.taskId] })
+      }
     })
 
     channel.bind(PUSHER_EVENTS.TASK_MOVED, () => {
-      queryClient.invalidateQueries({ queryKey: ["tasks", projectId] })
-      queryClient.invalidateQueries({ queryKey: ["project", projectId] })
+      invalidateBoard()
+      invalidateProjects()
     })
 
     channel.bind(PUSHER_EVENTS.TASK_DELETED, () => {
-      queryClient.invalidateQueries({ queryKey: ["tasks", projectId] })
-      queryClient.invalidateQueries({ queryKey: ["project", projectId] })
+      invalidateBoard()
+      invalidateProjects()
     })
 
-    channel.bind(PUSHER_EVENTS.TASK_ASSIGNED, () => {
-      queryClient.invalidateQueries({ queryKey: ["tasks", projectId] })
+    channel.bind(PUSHER_EVENTS.TASK_ASSIGNED, (data: any) => {
+      invalidateBoard()
+      if (data?.taskId) {
+        queryClient.invalidateQueries({ queryKey: ["task-detail", data.taskId] })
+      }
     })
 
-    channel.bind(PUSHER_EVENTS.TASK_UNASSIGNED, () => {
-      queryClient.invalidateQueries({ queryKey: ["tasks", projectId] })
+    channel.bind(PUSHER_EVENTS.TASK_UNASSIGNED, (data: any) => {
+      invalidateBoard()
+      if (data?.taskId) {
+        queryClient.invalidateQueries({ queryKey: ["task-detail", data.taskId] })
+      }
     })
 
     channel.bind(PUSHER_EVENTS.TASK_COMPLETED, () => {
-      queryClient.invalidateQueries({ queryKey: ["tasks", projectId] })
-      queryClient.invalidateQueries({ queryKey: ["project", projectId] })
+      invalidateBoard()
+      invalidateProjects()
     })
 
     /* ==================== LIST EVENTS ==================== */
 
     channel.bind(PUSHER_EVENTS.LIST_CREATED, () => {
-      queryClient.invalidateQueries({ queryKey: ["project", projectId] })
+      invalidateBoard()
     })
 
     channel.bind(PUSHER_EVENTS.LIST_UPDATED, () => {
-      queryClient.invalidateQueries({ queryKey: ["project", projectId] })
+      invalidateBoard()
     })
 
     channel.bind(PUSHER_EVENTS.LIST_DELETED, () => {
-      queryClient.invalidateQueries({ queryKey: ["project", projectId] })
+      invalidateBoard()
     })
 
     channel.bind(PUSHER_EVENTS.LIST_REORDERED, () => {
-      queryClient.invalidateQueries({ queryKey: ["project", projectId] })
+      invalidateBoard()
     })
 
     /* ==================== MEMBER EVENTS ==================== */
 
     channel.bind(PUSHER_EVENTS.MEMBER_JOINED, () => {
       queryClient.invalidateQueries({ queryKey: ["members", projectId] })
-      queryClient.invalidateQueries({ queryKey: ["project", projectId] })
+      queryClient.invalidateQueries({ queryKey: ["member-counts", projectId] })
+      invalidateProjects()
     })
 
     channel.bind(PUSHER_EVENTS.MEMBER_REMOVED, () => {
       queryClient.invalidateQueries({ queryKey: ["members", projectId] })
-      queryClient.invalidateQueries({ queryKey: ["project", projectId] })
+      queryClient.invalidateQueries({ queryKey: ["member-counts", projectId] })
+      invalidateProjects()
     })
 
     channel.bind(PUSHER_EVENTS.MEMBER_ROLE_CHANGED, () => {
       queryClient.invalidateQueries({ queryKey: ["members", projectId] })
+      queryClient.invalidateQueries({ queryKey: ["member-counts", projectId] })
     })
 
     /* ==================== INVITATION EVENTS ==================== */
@@ -116,23 +141,30 @@ export function useProjectChannel(projectId: string | null) {
     channel.bind(PUSHER_EVENTS.INVITATION_RESPONDED, () => {
       queryClient.invalidateQueries({ queryKey: ["invitations", projectId] })
       queryClient.invalidateQueries({ queryKey: ["members", projectId] })
+      queryClient.invalidateQueries({ queryKey: ["member-counts", projectId] })
     })
 
     /* ==================== COMMENT EVENTS ==================== */
 
-    channel.bind(PUSHER_EVENTS.COMMENT_ADDED, () => {
-      queryClient.invalidateQueries({ queryKey: ["comments", projectId] })
+    // Comments are keyed by taskId, not projectId.
+    // We receive the taskId in the event payload.
+    channel.bind(PUSHER_EVENTS.COMMENT_ADDED, (data: any) => {
+      if (data?.taskId) {
+        queryClient.invalidateQueries({ queryKey: ["comments", data.taskId] })
+      }
     })
 
-    channel.bind(PUSHER_EVENTS.COMMENT_DELETED, () => {
-      queryClient.invalidateQueries({ queryKey: ["comments", projectId] })
+    channel.bind(PUSHER_EVENTS.COMMENT_DELETED, (data: any) => {
+      if (data?.taskId) {
+        queryClient.invalidateQueries({ queryKey: ["comments", data.taskId] })
+      }
     })
 
     /* ==================== PROJECT EVENTS ==================== */
 
     channel.bind(PUSHER_EVENTS.PROJECT_UPDATED, () => {
-      queryClient.invalidateQueries({ queryKey: ["project", projectId] })
-      queryClient.invalidateQueries({ queryKey: ["projects"] })
+      invalidateBoard()
+      invalidateProjects()
     })
 
     /* ==================== CLEANUP ==================== */

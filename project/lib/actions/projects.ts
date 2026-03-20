@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache"
 import { createProjectSchema, updateProjectSchema } from "@/lib/validations/project"
 import { requireAuth } from "@/lib/auth"
+import { requirePermission } from "@/lib/permissions"
 import {
   getProjectsByUserId,
   createProject,
@@ -14,6 +15,8 @@ import {
   getUserProjectRole,
   createProjectInvitations,
 } from "@/lib/db/queries/projects"
+import { broadcastToProject } from "@/lib/pusher/server"
+import { PUSHER_EVENTS } from "@/lib/pusher/events"
 import type { ProjectCardData } from "@/types/index"
 
 export async function getProjectsAction(searchParams?: {
@@ -24,11 +27,7 @@ export async function getProjectsAction(searchParams?: {
 }): Promise<{ success: true; data: ProjectCardData[] } | { success: false; error: string }> {
   try {
     const { dbUserId } = await requireAuth()
-
-    // Call the database query
     const projects = await getProjectsByUserId(dbUserId, searchParams)
-
-    // Ensure the data shape matches your types
     return { success: true, data: projects as unknown as ProjectCardData[] }
   } catch (error: any) {
     return { success: false, error: "Failed to load projects." }
@@ -37,6 +36,7 @@ export async function getProjectsAction(searchParams?: {
 
 /**
  * Creates a new project, establishes default lists, and assigns the creator as Admin.
+ * No permission check needed — any authenticated user can create a project.
  */
 export async function createProjectAction(formData: FormData) {
   try {
@@ -63,20 +63,16 @@ export async function createProjectAction(formData: FormData) {
 
     const project = await createProject(projectInsertData as any, userId)
 
-    // 3. Handle invites (Parse JSON string from FormData)
+    // Handle invites (Parse JSON string from FormData)
     if (invites) {
       try {
         const parsedInvites = JSON.parse(invites)
         if (Array.isArray(parsedInvites) && parsedInvites.length > 0) {
           await createProjectInvitations(project.id, userId, parsedInvites)
-
-          // TODO: (Optional) Trigger an email service like Resend here to actually
-          // send the emails with the generated tokens!
         }
       } catch (parseError) {}
     }
 
-    // Revalidate cache and return the ID
     revalidatePath("/projects", "layout")
     return { success: true, projectId: project.id }
   } catch (error) {
@@ -91,16 +87,9 @@ export async function updateProjectAction(projectId: string, formData: FormData)
   try {
     const { dbUserId: userId } = await requireAuth()
 
-    // 1. RBAC Check: Only Admins can update project details
-    const role = await getUserProjectRole(projectId, userId)
-    if (role !== "admin") {
-      return {
-        success: false,
-        error: "Unauthorized: Only project admins can edit project details.",
-      }
-    }
+    const { error: permError } = await requirePermission(projectId, userId, "project", "update")
+    if (permError) return { success: false, error: permError }
 
-    // 2. Validate Input
     const rawData = Object.fromEntries(formData.entries())
     const parsed = updateProjectSchema.safeParse(rawData)
 
@@ -112,7 +101,6 @@ export async function updateProjectAction(projectId: string, formData: FormData)
       }
     }
 
-    // Format dates correctly for Drizzle
     const { startDate, dueDate, ...restData } = parsed.data
     const updateData = {
       ...restData,
@@ -120,10 +108,12 @@ export async function updateProjectAction(projectId: string, formData: FormData)
       ...(dueDate !== undefined && { dueDate: dueDate ? new Date(dueDate) : null }),
     }
 
-    // 3. Database Mutation
     await updateProject(projectId, updateData as any, userId)
 
-    // 4. Revalidate cache
+    await broadcastToProject(projectId, PUSHER_EVENTS.PROJECT_UPDATED, {
+      changes: restData,
+    })
+
     revalidatePath("/projects", "layout")
     revalidatePath(`/projects/${projectId}`, "layout")
 
@@ -140,19 +130,14 @@ export async function deleteProjectAction(projectId: string) {
   try {
     const { dbUserId: userId } = await requireAuth()
 
-    // 1. RBAC Check: Only Admins can delete projects
-    const role = await getUserProjectRole(projectId, userId)
-    if (role !== "admin") {
-      return { success: false, error: "Unauthorized: Only project admins can delete projects." }
-    }
+    const { error: permError } = await requirePermission(projectId, userId, "project", "delete")
+    if (permError) return { success: false, error: permError }
 
-    // 2. Database Mutation (CASCADE removes lists, tasks, members, etc.)
     await deleteProject(projectId, userId)
   } catch (error) {
     return { success: false, error: "Failed to delete project." }
   }
 
-  // 3. Revalidate and Return Success
   revalidatePath("/projects", "layout")
   return { success: true }
 }
@@ -164,12 +149,14 @@ export async function archiveProjectAction(projectId: string, isArchived: boolea
   try {
     const { dbUserId: userId } = await requireAuth()
 
-    const role = await getUserProjectRole(projectId, userId)
-    if (role !== "admin") {
-      return { success: false, error: "Unauthorized: Only project admins can archive projects." }
-    }
+    const { error: permError } = await requirePermission(projectId, userId, "project", "archive")
+    if (permError) return { success: false, error: permError }
 
     await archiveProject(projectId, isArchived, userId)
+
+    await broadcastToProject(projectId, PUSHER_EVENTS.PROJECT_UPDATED, {
+      changes: { isArchived },
+    })
 
     revalidatePath("/projects", "layout")
     revalidatePath(`/projects/${projectId}`, "layout")
@@ -187,15 +174,14 @@ export async function setProjectStatusAction(projectId: string, status: "active"
   try {
     const { dbUserId: userId } = await requireAuth()
 
-    const role = await getUserProjectRole(projectId, userId)
-    if (role !== "admin") {
-      return {
-        success: false,
-        error: "Unauthorized: Only project admins can change project status.",
-      }
-    }
+    const { error: permError } = await requirePermission(projectId, userId, "project", "update")
+    if (permError) return { success: false, error: permError }
 
     await setProjectStatus(projectId, status, userId)
+
+    await broadcastToProject(projectId, PUSHER_EVENTS.PROJECT_UPDATED, {
+      changes: { status },
+    })
 
     revalidatePath("/projects", "layout")
     revalidatePath(`/projects/${projectId}`, "layout")
@@ -208,13 +194,12 @@ export async function setProjectStatusAction(projectId: string, status: "active"
 
 /**
  * Toggles the pinned status of a project for the current user.
- * No strict RBAC needed here; any involved member can pin a project for themselves.
+ * Any involved member can pin a project for themselves.
  */
 export async function togglePinProjectAction(projectId: string, currentPinState: boolean) {
   try {
     const { dbUserId: userId } = await requireAuth()
 
-    // Validates the user is actually in the project before pinning
     const role = await getUserProjectRole(projectId, userId)
     if (!role) {
       return { success: false, error: "You are not a member of this project." }
@@ -222,7 +207,6 @@ export async function togglePinProjectAction(projectId: string, currentPinState:
 
     await togglePinProject(projectId, userId, !currentPinState)
 
-    // Revalidate dashboard and projects list to show the new pinned state
     revalidatePath("/projects", "layout")
     revalidatePath("/dashboard", "layout")
 

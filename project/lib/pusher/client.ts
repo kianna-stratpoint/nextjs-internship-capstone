@@ -30,9 +30,7 @@ export function getPusherClient(): PusherClient {
 
   pusherClient = new PusherClient(key, {
     cluster,
-    // Auth endpoint for private channels
     authEndpoint: "/api/pusher/auth",
-    // Auth is handled via cookies (Clerk session)
     authTransport: "ajax",
     auth: {
       headers: {

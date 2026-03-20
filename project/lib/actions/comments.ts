@@ -2,6 +2,9 @@
 
 import { revalidatePath } from "next/cache"
 import { requireAuth } from "@/lib/auth"
+import { requirePermission } from "@/lib/permissions"
+import { broadcastToProject } from "@/lib/pusher/server"
+import { PUSHER_EVENTS } from "@/lib/pusher/events"
 import { db } from "@/lib/db"
 import { taskAssignees, notifications } from "@/lib/db/schema"
 import { eq, and, ne } from "drizzle-orm"
@@ -11,11 +14,13 @@ import {
   deleteComment,
   updateComment,
   getCommentById,
+  getCommentsByTaskId,
 } from "@/lib/db/queries/comments"
-import { getUserProjectRole } from "@/lib/db/queries/projects"
 import { createCommentSchema, updateCommentSchema } from "@/lib/validations/comment"
-import { getCommentsByTaskId } from "@/lib/db/queries/comments"
 
+/**
+ * Read-only — no permission check needed beyond auth
+ */
 export async function getCommentsAction(taskId: string) {
   try {
     const comments = await getCommentsByTaskId(taskId)
@@ -34,15 +39,13 @@ export async function createCommentAction(data: unknown, projectId: string) {
 
     const { taskId, content } = createCommentSchema.parse(data)
 
-    const role = await getUserProjectRole(projectId, userId)
-    if (!role) return { success: false, error: "Unauthorized: Not a project member." }
-    if (role === "viewer") {
-      return { success: false, error: "Unauthorized: Viewers cannot comment." }
-    }
+    const { error: permError } = await requirePermission(projectId, userId, "task", "comment")
+    if (permError) return { success: false, error: permError }
 
     const comment = await createComment(taskId, userId, content)
     if (!comment) throw new Error("Failed to create comment.")
 
+    // Notify assignees (exclude the commenter)
     const assignees = await db.query.taskAssignees.findMany({
       where: and(eq(taskAssignees.taskId, taskId), ne(taskAssignees.userId, userId)),
       with: { user: true },
@@ -61,6 +64,13 @@ export async function createCommentAction(data: unknown, projectId: string) {
       await db.insert(notifications).values(notificationValues)
     }
 
+    await broadcastToProject(projectId, PUSHER_EVENTS.COMMENT_ADDED, {
+      commentId: comment.id,
+      taskId,
+      userId,
+      content,
+    })
+
     revalidatePath(`/projects/${projectId}`)
     return { success: true, data: comment }
   } catch (error: any) {
@@ -69,7 +79,7 @@ export async function createCommentAction(data: unknown, projectId: string) {
 }
 
 /**
- * Update an existing comment
+ * Update an existing comment (own comments only)
  */
 export async function updateCommentAction(data: unknown, projectId: string) {
   try {
@@ -77,6 +87,7 @@ export async function updateCommentAction(data: unknown, projectId: string) {
 
     const { commentId, content } = updateCommentSchema.parse(data)
 
+    // Ownership check — only the author can edit their comment
     const existingComment = await getCommentById(commentId)
     if (!existingComment) {
       return { success: false, error: "Comment not found." }
@@ -95,7 +106,7 @@ export async function updateCommentAction(data: unknown, projectId: string) {
 }
 
 /**
- * Delete a comment
+ * Delete a comment (own comments only)
  */
 export async function deleteCommentAction(commentId: string, projectId: string) {
   try {
@@ -111,6 +122,11 @@ export async function deleteCommentAction(commentId: string, projectId: string) 
     }
 
     await deleteComment(commentId, userId)
+
+    await broadcastToProject(projectId, PUSHER_EVENTS.COMMENT_DELETED, {
+      commentId,
+      taskId: existingComment.taskId,
+    })
 
     revalidatePath(`/projects/${projectId}`)
     return { success: true }

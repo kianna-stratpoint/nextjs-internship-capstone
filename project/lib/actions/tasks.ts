@@ -2,6 +2,9 @@
 
 import { revalidatePath } from "next/cache"
 import { requireAuth } from "@/lib/auth"
+import { requirePermission } from "@/lib/permissions"
+import { broadcastToProject } from "@/lib/pusher/server"
+import { PUSHER_EVENTS } from "@/lib/pusher/events"
 
 import {
   createTask,
@@ -18,8 +21,6 @@ import {
   addTaskAttachments,
   deleteTaskAttachment,
 } from "@/lib/db/queries/tasks"
-
-import { getUserProjectRole } from "@/lib/db/queries/projects"
 
 import {
   createTaskSchema,
@@ -61,12 +62,17 @@ export async function createTaskAction(data: unknown) {
     const attachmentsString = data.get("attachments") as string
     const attachments = attachmentsString ? JSON.parse(attachmentsString) : []
 
-    const role = await getUserProjectRole(projectId, userId)
-    if (!role) return { success: false, error: "Unauthorized: Not a project member." }
-    if (role === "viewer")
-      return { success: false, error: "Unauthorized: Viewers cannot create tasks." }
+    const { error: permError } = await requirePermission(projectId, userId, "task", "create")
+    if (permError) return { success: false, error: permError }
 
     const task = await createTask(taskData, listId, projectId, userId, labels, attachments)
+
+    await broadcastToProject(projectId, PUSHER_EVENTS.TASK_CREATED, {
+      taskId: task.id,
+      listId,
+      title: task.title,
+      createdBy: userId,
+    })
 
     revalidatePath(`/projects/${projectId}`)
     return { success: true, data: task }
@@ -82,28 +88,20 @@ export async function updateTaskAction(taskId: string, projectId: string, data: 
   try {
     const { dbUserId: userId } = await requireAuth()
 
+    const { error: permError } = await requirePermission(projectId, userId, "task", "update")
+    if (permError) return { success: false, error: permError }
+
     const payload = data as Record<string, any>
     const labels = payload.labels || []
 
     const validatedData = updateTaskSchema.parse(data)
 
-    const role = await getUserProjectRole(projectId, userId)
-    if (!role) return { success: false, error: "Unauthorized: Not a project member." }
-    if (role === "viewer")
-      return { success: false, error: "Unauthorized: Viewers cannot edit tasks." }
-
-    // RBAC: Contributor can only edit their own
-    if (role === "contributor") {
-      const existingTask = await getTaskById(taskId)
-      if (existingTask?.createdById !== userId) {
-        return {
-          success: false,
-          error: "Unauthorized: Contributors can only edit tasks they created.",
-        }
-      }
-    }
-
     const updatedTask = await updateTask(taskId, validatedData, userId, labels)
+
+    await broadcastToProject(projectId, PUSHER_EVENTS.TASK_UPDATED, {
+      taskId,
+      changes: validatedData,
+    })
 
     revalidatePath(`/projects/${projectId}`)
     return { success: true, data: updatedTask }
@@ -123,12 +121,15 @@ export async function addTaskAttachmentsAction(
   try {
     const { dbUserId: userId } = await requireAuth()
 
-    const role = await getUserProjectRole(projectId, userId)
-    if (!role) return { success: false, error: "Unauthorized: Not a project member." }
-    if (role === "viewer")
-      return { success: false, error: "Unauthorized: Viewers cannot add attachments." }
+    const { error: permError } = await requirePermission(projectId, userId, "task", "update")
+    if (permError) return { success: false, error: permError }
 
     const inserted = await addTaskAttachments(taskId, projectId, userId, attachments)
+
+    await broadcastToProject(projectId, PUSHER_EVENTS.TASK_UPDATED, {
+      taskId,
+      changes: { attachmentsAdded: attachments.length },
+    })
 
     revalidatePath(`/projects/${projectId}`)
     return { success: true, data: inserted }
@@ -148,10 +149,8 @@ export async function deleteTaskAttachmentAction(
   try {
     const { dbUserId: userId } = await requireAuth()
 
-    const role = await getUserProjectRole(projectId, userId)
-    if (!role) return { success: false, error: "Unauthorized: Not a project member." }
-    if (role === "viewer")
-      return { success: false, error: "Unauthorized: Viewers cannot delete attachments." }
+    const { error: permError } = await requirePermission(projectId, userId, "task", "update")
+    if (permError) return { success: false, error: permError }
 
     // This will throw if user is not the uploader
     const deleted = await deleteTaskAttachment(attachmentId, taskId, projectId, userId)
@@ -165,6 +164,11 @@ export async function deleteTaskAttachmentAction(
         // Don't block the DB delete if UT cleanup fails
       }
     }
+
+    await broadcastToProject(projectId, PUSHER_EVENTS.TASK_UPDATED, {
+      taskId,
+      changes: { attachmentDeleted: attachmentId },
+    })
 
     revalidatePath(`/projects/${projectId}`)
     return { success: true }
@@ -183,22 +187,19 @@ export async function deleteTaskAction(taskId: string, projectId: string) {
   try {
     const { dbUserId: userId } = await requireAuth()
 
-    const role = await getUserProjectRole(projectId, userId)
-    if (!role) return { success: false, error: "Unauthorized: Not a project member." }
-    if (role === "viewer")
-      return { success: false, error: "Unauthorized: Viewers cannot delete tasks." }
+    const { error: permError } = await requirePermission(projectId, userId, "task", "delete")
+    if (permError) return { success: false, error: permError }
 
-    if (role === "contributor") {
-      const existingTask = await getTaskById(taskId)
-      if (existingTask?.createdById !== userId) {
-        return {
-          success: false,
-          error: "Unauthorized: Contributors can only delete tasks they created.",
-        }
-      }
-    }
+    // Grab listId before deleting so we can include it in the broadcast
+    const task = await getTaskById(taskId)
+    const listId = task?.listId ?? ""
 
     await deleteTask(taskId, userId)
+
+    await broadcastToProject(projectId, PUSHER_EVENTS.TASK_DELETED, {
+      taskId,
+      listId,
+    })
 
     revalidatePath(`/projects/${projectId}`)
     return { success: true }
@@ -215,12 +216,21 @@ export async function moveTaskAction(data: unknown, projectId: string) {
     const { dbUserId: userId } = await requireAuth()
     const { taskId, listId, position } = moveTaskSchema.parse(data)
 
-    const role = await getUserProjectRole(projectId, userId)
-    if (!role) return { success: false, error: "Unauthorized: Not a project member." }
-    if (role === "viewer")
-      return { success: false, error: "Unauthorized: Viewers cannot move tasks." }
+    const { error: permError } = await requirePermission(projectId, userId, "task", "move")
+    if (permError) return { success: false, error: permError }
+
+    // Grab current listId before moving so we can broadcast fromListId
+    const currentTask = await getTaskById(taskId)
+    const fromListId = currentTask?.listId ?? ""
 
     const updatedTask = await moveTask(taskId, listId, position, userId)
+
+    await broadcastToProject(projectId, PUSHER_EVENTS.TASK_MOVED, {
+      taskId,
+      fromListId,
+      toListId: listId,
+      position,
+    })
 
     revalidatePath(`/projects/${projectId}`, "layout")
     return { success: true, data: updatedTask }
@@ -240,12 +250,15 @@ export async function toggleTaskCompletionAction(
   try {
     const { dbUserId: userId } = await requireAuth()
 
-    const role = await getUserProjectRole(projectId, userId)
-    if (!role) return { success: false, error: "Unauthorized: Not a project member." }
-    if (role === "viewer")
-      return { success: false, error: "Unauthorized: Viewers cannot modify tasks." }
+    const { error: permError } = await requirePermission(projectId, userId, "task", "update")
+    if (permError) return { success: false, error: permError }
 
     const updatedTask = await toggleTaskCompletion(taskId, isCompleted, userId)
+
+    await broadcastToProject(projectId, PUSHER_EVENTS.TASK_COMPLETED, {
+      taskId,
+      isCompleted,
+    })
 
     revalidatePath(`/projects/${projectId}`)
     return { success: true, data: updatedTask }
@@ -260,15 +273,18 @@ export async function toggleTaskCompletionAction(
 export async function assignTaskAction(data: unknown, projectId: string) {
   try {
     const { dbUserId: userId } = await requireAuth()
-
     const { taskId, assigneeUserId } = assignTaskSchema.parse(data)
 
-    const role = await getUserProjectRole(projectId, userId)
-    if (!role) return { success: false, error: "Unauthorized: Not a project member." }
-    if (role === "viewer")
-      return { success: false, error: "Unauthorized: Viewers cannot assign tasks." }
+    const { error: permError } = await requirePermission(projectId, userId, "task", "assign")
+    if (permError) return { success: false, error: permError }
 
     const assignment = await assignTask(taskId, assigneeUserId, userId)
+
+    await broadcastToProject(projectId, PUSHER_EVENTS.TASK_ASSIGNED, {
+      taskId,
+      assigneeId: assigneeUserId,
+      assignedBy: userId,
+    })
 
     revalidatePath(`/projects/${projectId}`)
     return { success: true, data: assignment }
@@ -283,15 +299,18 @@ export async function assignTaskAction(data: unknown, projectId: string) {
 export async function unassignTaskAction(data: unknown, projectId: string) {
   try {
     const { dbUserId: userId } = await requireAuth()
-
     const { taskId, assigneeUserId } = assignTaskSchema.parse(data)
 
-    const role = await getUserProjectRole(projectId, userId)
-    if (!role) return { success: false, error: "Unauthorized: Not a project member." }
-    if (role === "viewer")
-      return { success: false, error: "Unauthorized: Viewers cannot modify assignments." }
+    const { error: permError } = await requirePermission(projectId, userId, "task", "assign")
+    if (permError) return { success: false, error: permError }
 
     await unassignTask(taskId, assigneeUserId, userId)
+
+    await broadcastToProject(projectId, PUSHER_EVENTS.TASK_UNASSIGNED, {
+      taskId,
+      assigneeId: assigneeUserId,
+      removedBy: userId,
+    })
 
     revalidatePath(`/projects/${projectId}`)
     return { success: true }
@@ -302,6 +321,7 @@ export async function unassignTaskAction(data: unknown, projectId: string) {
 
 /**
  * Batch reorder tasks within a list (Called after Dnd-Kit drop)
+ * No individual broadcast — the move events cover DnD scenarios
  */
 export async function reorderTasksAction(
   updates: { id: string; position: number }[],
@@ -310,10 +330,8 @@ export async function reorderTasksAction(
   try {
     const { dbUserId: userId } = await requireAuth()
 
-    const role = await getUserProjectRole(projectId, userId)
-    if (!role) return { success: false, error: "Unauthorized: Not a project member." }
-    if (role === "viewer")
-      return { success: false, error: "Unauthorized: Viewers cannot reorder tasks." }
+    const { error: permError } = await requirePermission(projectId, userId, "task", "move")
+    if (permError) return { success: false, error: permError }
 
     await reorderTasks(updates)
 
@@ -331,10 +349,8 @@ export async function rebalanceTasksAction(listId: string, projectId: string) {
   try {
     const { dbUserId: userId } = await requireAuth()
 
-    const role = await getUserProjectRole(projectId, userId)
-    if (!role) return { success: false, error: "Unauthorized: Not a project member." }
-    if (role === "viewer")
-      return { success: false, error: "Unauthorized: Viewers cannot reorder tasks." }
+    const { error: permError } = await requirePermission(projectId, userId, "task", "move")
+    if (permError) return { success: false, error: permError }
 
     const existingTasks = await getTasksByListId(listId)
 
@@ -356,6 +372,9 @@ export async function rebalanceTasksAction(listId: string, projectId: string) {
   }
 }
 
+/**
+ * Read-only — no permissions or broadcasts needed
+ */
 export async function getTaskActivityLogsAction(taskId: string) {
   try {
     const logs = await getTaskActivityLogs(taskId)
@@ -366,8 +385,7 @@ export async function getTaskActivityLogsAction(taskId: string) {
 }
 
 /**
- * Get a single task with full details (attachments, labels, assignees, comments).
- * Used by TaskSheet to get fresh data independent of the board's list query.
+ * Read-only — no permissions or broadcasts needed
  */
 export async function getTaskByIdAction(taskId: string) {
   try {
