@@ -420,6 +420,37 @@ export const notifications = pgTable(
   ]
 )
 
+/* ==================== CALENDAR EVENTS ==================== */
+/* Custom events created by users. Can be project-scoped or personal (global). */
+
+export const calendarEvents = pgTable(
+  "calendar_events",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    title: text("title").notNull(),
+    description: text("description"),
+    startDate: timestamp("start_date", { withTimezone: true }).notNull(),
+    endDate: timestamp("end_date", { withTimezone: true }).notNull(),
+    allDay: boolean("all_day").default(true).notNull(),
+    color: text("color"),
+    // Nullable — null means personal/global event, set means project-scoped
+    projectId: uuid("project_id").references(() => projects.id, { onDelete: "cascade" }),
+    createdById: uuid("created_by_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [
+    index("calendar_events_project_idx").on(table.projectId),
+    index("calendar_events_created_by_idx").on(table.createdById),
+    index("calendar_events_date_idx").on(table.startDate, table.endDate),
+  ]
+)
+
 /* ==================== RELATIONS ==================== */
 
 export const usersRelations = relations(users, ({ many }) => ({
@@ -567,6 +598,17 @@ export const notificationsRelations = relations(notifications, ({ one }) => ({
   }),
 }))
 
+export const calendarEventsRelations = relations(calendarEvents, ({ one }) => ({
+  project: one(projects, {
+    fields: [calendarEvents.projectId],
+    references: [projects.id],
+  }),
+  createdBy: one(users, {
+    fields: [calendarEvents.createdById],
+    references: [users.id],
+  }),
+}))
+
 /* ==================== INFERRED TYPES ==================== */
 
 export type User = typeof users.$inferSelect
@@ -607,6 +649,9 @@ export type NewProjectInvitation = typeof projectInvitations.$inferInsert
 
 export type Notification = typeof notifications.$inferSelect
 export type NewNotification = typeof notifications.$inferInsert
+
+export type CalendarEvent = typeof calendarEvents.$inferSelect
+export type NewCalendarEvent = typeof calendarEvents.$inferInsert
 
 /*
 TODO: Implementation Notes for Interns:

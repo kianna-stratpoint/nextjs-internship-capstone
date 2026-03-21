@@ -1,101 +1,301 @@
-import { Calendar, ChevronLeft, ChevronRight, Plus } from "lucide-react"
+"use client"
+
+import { useState, useRef, useCallback } from "react"
+import { Plus, Loader2 } from "lucide-react"
+import FullCalendar from "@fullcalendar/react"
+import dayGridPlugin from "@fullcalendar/daygrid"
+import timeGridPlugin from "@fullcalendar/timegrid"
+import interactionPlugin from "@fullcalendar/interaction"
+
+import { useCalendar } from "@/hooks/use-calendar"
+import { useTeamMembers } from "@/hooks/use-team-member"
+import { useUIStore } from "@/stores/ui-store"
+
+import { Button } from "@/components/ui/button"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+
+import { CalendarEventModal } from "@/components/modals/calendar-event-modal"
+import { CalendarEventDetail } from "@/components/features/calendar/calendar-event-detail"
+import { UpcomingDeadlines } from "@/components/features/calendar/upcoming-deadlines"
+
+import "@/styles/calendar.css"
+
+/* ==================== COMPONENT ==================== */
 
 export default function CalendarPage() {
+  const calendarRef = useRef<FullCalendar>(null)
+
+  // Date range for fetching — initialized to current month
+  const [dateRange, setDateRange] = useState<{ start: string; end: string }>(() => {
+    const now = new Date()
+    const start = new Date(now.getFullYear(), now.getMonth(), 1)
+    const end = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+    return { start: start.toISOString(), end: end.toISOString() }
+  })
+
+  const [projectFilter, setProjectFilter] = useState<string | null>(null)
+
+  // Store — controls the create/edit event modal
+  const { openCalendarEventModal, closeCalendarEventModal, calendarEditingEvent } = useUIStore()
+
+  // Local state — detail modal (read-only for tasks) and delete confirmation
+  const [detailEvent, setDetailEvent] = useState<any>(null)
+  const [isDetailOpen, setIsDetailOpen] = useState(false)
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false)
+
+  // Data
+  const { memberProjects } = useTeamMembers(null)
+
+  const {
+    events,
+    isLoading,
+    createEvent,
+    isCreating,
+    updateEvent,
+    isUpdating,
+    deleteEvent,
+    isDeleting,
+  } = useCalendar(dateRange.start, dateRange.end, projectFilter === "all" ? null : projectFilter)
+
+  // Map events to FullCalendar format
+  const calendarEvents = events.map((e: any) => {
+    const isTask = e.type === "task"
+    const dotColor = e.isCompleted
+      ? "#10B981"
+      : e.priority === "high"
+        ? "#EF4444"
+        : e.priority === "medium"
+          ? "#F59E0B"
+          : e.color || "#3B82F6"
+
+    return {
+      id: e.id,
+      title: e.title,
+      start: e.start,
+      end: e.end,
+      allDay: e.allDay,
+
+      display: isTask ? "auto" : "block",
+
+      backgroundColor: isTask ? "transparent" : e.color,
+      borderColor: isTask ? "transparent" : e.color,
+      textColor: isTask ? "inherit" : "#fff",
+      extendedProps: { ...e, dotColor },
+      classNames: isTask
+        ? ["fc-task-event", e.isCompleted ? "fc-task-completed" : ""].filter(Boolean)
+        : ["fc-event-bar"],
+    }
+  })
+
+  /* ==================== HANDLERS ==================== */
+
+  const handleDatesSet = useCallback((arg: any) => {
+    setDateRange({
+      start: arg.start.toISOString(),
+      end: arg.end.toISOString(),
+    })
+  }, [])
+
+  // Click empty date → open create modal with that date
+  const handleDateClick = useCallback(
+    (arg: any) => {
+      openCalendarEventModal(new Date(arg.date))
+    },
+    [openCalendarEventModal]
+  )
+
+  // Click event → task opens detail, custom event opens edit
+  const handleEventClick = useCallback(
+    (arg: any) => {
+      const eventData = {
+        ...arg.event.extendedProps,
+        id: arg.event.id,
+        title: arg.event.title,
+        start: arg.event.start,
+        end: arg.event.end || arg.event.start,
+        allDay: arg.event.allDay,
+      }
+
+      if (eventData.type === "task") {
+        setDetailEvent(eventData)
+        setIsDetailOpen(true)
+      } else {
+        openCalendarEventModal(undefined, eventData)
+      }
+    },
+    [openCalendarEventModal]
+  )
+
+  // Inject dot color CSS variable on task events
+  const handleEventDidMount = useCallback((info: any) => {
+    const dotColor = info.event.extendedProps?.dotColor
+    if (dotColor && info.el) {
+      info.el.style.setProperty("--dot-color", dotColor)
+    }
+  }, [])
+
+  // Save — create or update based on whether we're editing
+  const handleSave = async (payload: any) => {
+    try {
+      if (calendarEditingEvent && calendarEditingEvent.id) {
+        await updateEvent({ eventId: calendarEditingEvent.id, data: payload })
+      } else {
+        await createEvent(payload)
+      }
+
+      closeCalendarEventModal()
+    } catch (error) {}
+  }
+
+  // Delete custom event
+  const handleDelete = async () => {
+    // Guard against missing event data or trying to delete a task here
+    if (!calendarEditingEvent || calendarEditingEvent.type === "task") {
+      setIsDeleteOpen(false)
+      return
+    }
+
+    try {
+      await deleteEvent(calendarEditingEvent.id)
+    } catch (error) {
+    } finally {
+      setIsDeleteOpen(false)
+      closeCalendarEventModal()
+    }
+  }
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-outer_space-500 dark:text-platinum-500">
-            Calendar
-          </h1>
-          <p className="mt-2 text-payne's_gray-500 dark:text-french_gray-500">
-            View project deadlines and team schedules
-          </p>
-        </div>
-        <button className="inline-flex items-center rounded-lg bg-blue_munsell-500 px-4 py-2 text-white transition-colors hover:bg-blue_munsell-600">
-          <Plus size={20} className="mr-2" />
-          Add Event
-        </button>
-      </div>
+      {/* Header */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="font-display text-3xl font-bold tracking-tight text-foreground">Calendar</h1>
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Project Filter */}
+          <Select
+            value={projectFilter ?? "all"}
+            onValueChange={(val) => setProjectFilter(val === "all" ? null : val)}
+          >
+            <SelectTrigger className="w-full text-foreground sm:w-[300px]">
+              <SelectValue placeholder="All Projects" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Projects</SelectItem>
+              {memberProjects.map((project: any) => (
+                <SelectItem key={project.id} value={project.id}>
+                  <div className="flex items-center gap-2">
+                    <div
+                      className="h-2.5 w-2.5 rounded-full"
+                      style={{ backgroundColor: project.color || "#3b82f6" }}
+                    />
+                    <span>{project.title}</span>
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-      {/* Implementation Tasks Banner */}
-      <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4 dark:border-yellow-800 dark:bg-yellow-900/20">
-        <h3 className="mb-2 text-sm font-medium text-yellow-800 dark:text-yellow-200">
-          📅 Calendar Implementation Tasks
-        </h3>
-        <ul className="space-y-1 text-sm text-yellow-700 dark:text-yellow-300">
-          <li>• Task 6.2: Add task due dates, priorities, and labels</li>
-          <li>• Task 6.6: Add bulk task operations and keyboard shortcuts</li>
-        </ul>
-      </div>
-
-      {/* Calendar Header */}
-      <div className="rounded-lg border border-french_gray-300 bg-white p-6 dark:border-payne's_gray-400 dark:bg-outer_space-500">
-        <div className="mb-6 flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <button className="rounded-lg p-2 hover:bg-platinum-500 dark:hover:bg-payne's_gray-400">
-              <ChevronLeft size={20} />
-            </button>
-            <h2 className="text-xl font-semibold text-outer_space-500 dark:text-platinum-500">
-              December 2024
-            </h2>
-            <button className="rounded-lg p-2 hover:bg-platinum-500 dark:hover:bg-payne's_gray-400">
-              <ChevronRight size={20} />
-            </button>
-          </div>
-          <div className="flex space-x-2">
-            <button className="rounded bg-blue_munsell-100 px-3 py-1 text-sm text-blue_munsell-700 dark:bg-blue_munsell-900 dark:text-blue_munsell-300">
-              Month
-            </button>
-            <button className="rounded px-3 py-1 text-sm text-payne's_gray-500 hover:bg-platinum-500 dark:text-french_gray-400 dark:hover:bg-payne's_gray-400">
-              Week
-            </button>
-            <button className="rounded px-3 py-1 text-sm text-payne's_gray-500 hover:bg-platinum-500 dark:text-french_gray-400 dark:hover:bg-payne's_gray-400">
-              Day
-            </button>
-          </div>
-        </div>
-
-        {/* Calendar Grid Placeholder */}
-        <div className="flex h-96 items-center justify-center rounded-lg bg-platinum-800 dark:bg-outer_space-400">
-          <div className="text-center text-payne's_gray-500 dark:text-french_gray-400">
-            <Calendar size={48} className="mx-auto mb-2" />
-            <p>Calendar Component Placeholder</p>
-            <p className="text-sm">TODO: Implement with react-big-calendar or similar</p>
-          </div>
+          {/* New Event Button */}
+          <Button onClick={() => openCalendarEventModal(new Date())}>
+            <Plus className="mr-2 h-4 w-4" />
+            New Event
+          </Button>
         </div>
       </div>
 
-      {/* Upcoming Events */}
-      <div className="rounded-lg border border-french_gray-300 bg-white p-6 dark:border-payne's_gray-400 dark:bg-outer_space-500">
-        <h3 className="mb-4 text-lg font-semibold text-outer_space-500 dark:text-platinum-500">
-          Upcoming Deadlines
-        </h3>
-        <div className="space-y-3">
-          {[
-            { title: "Website Redesign", date: "Dec 15, 2024", type: "Project Deadline" },
-            { title: "Team Meeting", date: "Dec 18, 2024", type: "Meeting" },
-            { title: "Mobile App Launch", date: "Dec 22, 2024", type: "Milestone" },
-          ].map((event, index) => (
-            <div
-              key={index}
-              className="flex items-center justify-between rounded-lg bg-platinum-800 p-3 dark:bg-outer_space-400"
-            >
-              <div>
-                <div className="font-medium text-outer_space-500 dark:text-platinum-500">
-                  {event.title}
-                </div>
-                <div className="text-sm text-payne's_gray-500 dark:text-french_gray-400">
-                  {event.type}
-                </div>
-              </div>
-              <div className="text-sm text-payne's_gray-500 dark:text-french_gray-400">
-                {event.date}
-              </div>
+      {/* Main Layout: Calendar + Sidebar */}
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_320px]">
+        {/* Calendar */}
+        <div className="relative w-full min-w-0 rounded-xl border border-border bg-card p-3 sm:p-5">
+          {/* Loading Overlay */}
+          {isLoading && (
+            <div className="absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-card/50 backdrop-blur-sm">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
-          ))}
+          )}
+
+          <FullCalendar
+            ref={calendarRef}
+            plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+            initialView="dayGridMonth"
+            headerToolbar={{
+              left: "today prev,next",
+              center: "title",
+              right: "dayGridMonth,timeGridWeek,timeGridDay",
+            }}
+            events={calendarEvents}
+            datesSet={handleDatesSet}
+            dateClick={handleDateClick}
+            eventClick={handleEventClick}
+            eventDidMount={handleEventDidMount}
+            editable={false}
+            selectable={false}
+            dayMaxEvents={3}
+            height="auto"
+            firstDay={0}
+            buttonText={{
+              today: "Today",
+              month: "Month",
+              week: "Week",
+              day: "Day",
+            }}
+          />
         </div>
+
+        {/* Sidebar */}
+        <UpcomingDeadlines events={events} />
       </div>
+
+      {/* Create / Edit Event Modal (store-controlled) */}
+      <CalendarEventModal
+        projects={memberProjects}
+        onSave={handleSave}
+        onDelete={() => setIsDeleteOpen(true)}
+        isSaving={isCreating || isUpdating}
+      />
+
+      {/* Task Detail Modal (local state — read-only) */}
+      <CalendarEventDetail open={isDetailOpen} onOpenChange={setIsDetailOpen} event={detailEvent} />
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-foreground">Delete Event</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete &quot;{calendarEditingEvent?.title}&quot;? This cannot
+              be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="text-foreground" disabled={isDeleting}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

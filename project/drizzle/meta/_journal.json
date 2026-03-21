@@ -36,6 +36,13 @@
       "when": 1773915575386,
       "tag": "0004_long_warpath",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1774056729079,
+      "tag": "0005_slippery_swordsman",
+      "breakpoints": true
     }
   ]
 }

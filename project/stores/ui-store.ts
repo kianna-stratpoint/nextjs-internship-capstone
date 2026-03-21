@@ -71,6 +71,12 @@ interface UIState {
   inviteProjectId: string | null
   openInviteMemberModal: (projectId: string) => void
   closeInviteMemberModal: () => void
+
+  isCalendarEventModalOpen: boolean
+  calendarEditingEvent: any | null
+  calendarDefaultDate: Date | null
+  openCalendarEventModal: (defaultDate?: Date, event?: any) => void
+  closeCalendarEventModal: () => void
 }
 
 export const useUIStore = create<UIState>((set) => ({
@@ -92,4 +98,20 @@ export const useUIStore = create<UIState>((set) => ({
   openInviteMemberModal: (projectId) =>
     set({ isInviteMemberModalOpen: true, inviteProjectId: projectId }),
   closeInviteMemberModal: () => set({ isInviteMemberModalOpen: false, inviteProjectId: null }),
+
+  isCalendarEventModalOpen: false,
+  calendarEditingEvent: null,
+  calendarDefaultDate: null,
+  openCalendarEventModal: (defaultDate, event) =>
+    set({
+      isCalendarEventModalOpen: true,
+      calendarDefaultDate: defaultDate ?? null,
+      calendarEditingEvent: event ?? null,
+    }),
+  closeCalendarEventModal: () =>
+    set({
+      isCalendarEventModalOpen: false,
+      calendarEditingEvent: null,
+      calendarDefaultDate: null,
+    }),
 }))

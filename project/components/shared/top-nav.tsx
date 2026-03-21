@@ -3,7 +3,6 @@
 import dynamic from "next/dynamic"
 import { ThemeToggle } from "@/components/shared/theme-toggle"
 import { Menu } from "lucide-react"
-import { NotificationBell } from "../features/notifications/notification-bell"
 
 const ClerkUserButton = dynamic(
   () =>
@@ -34,6 +33,14 @@ const ClerkUserButton = dynamic(
   }
 )
 
+const NotificationBell = dynamic(
+  () =>
+    import("@/components/features/notifications/notification-bell").then(
+      (mod) => mod.NotificationBell
+    ),
+  { ssr: false }
+)
+
 interface TopNavProps {
   onMenuClick: () => void
 }
@@ -54,7 +61,6 @@ export function TopNav({ onMenuClick }: TopNavProps) {
       <div className="flex items-center gap-4">
         <ThemeToggle />
         <NotificationBell />
-
         <ClerkUserButton />
       </div>
     </header>

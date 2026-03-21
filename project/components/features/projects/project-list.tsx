@@ -77,8 +77,11 @@ export function ProjectList() {
           comparison = pA - pB
           break
         case "progress":
-          const getProgress = (p: ProjectCardData) =>
-            p._count?.tasks ? p._count.completedTasks / p._count.tasks : 0
+          const getProgress = (p: ProjectCardData) => {
+            const tasks = p._count?.tasks ?? 0
+            const completed = p._count?.completedTasks ?? 0
+            return tasks > 0 ? completed / tasks : 0
+          }
           comparison = getProgress(a) - getProgress(b)
           break
         case "dueDate":
