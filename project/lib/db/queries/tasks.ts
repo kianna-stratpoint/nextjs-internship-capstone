@@ -1,4 +1,4 @@
-import { eq, and, asc, desc, count, sql, lte, gte, isNull, inArray } from "drizzle-orm"
+import { eq, and, asc, desc, count, sql, lte, gte, isNull, inArray, or } from "drizzle-orm"
 import { db } from "@/lib/db"
 import {
   tasks,
@@ -693,7 +693,15 @@ export async function getTasksByAssignee(userId: string) {
  */
 export async function getTaskActivityLogs(taskId: string) {
   return db.query.activityLogs.findMany({
-    where: and(eq(activityLogs.entityId, taskId), eq(activityLogs.entityType, "task")),
+    where: or(
+      // Task-level activity (created, updated, moved, completed, assigned, etc.)
+      and(eq(activityLogs.entityId, taskId), eq(activityLogs.entityType, "task")),
+      // Comment activity (entityType is "comment" but metadata.taskId matches)
+      and(
+        eq(activityLogs.entityType, "comment"),
+        sql`${activityLogs.metadata}->>'taskId' = ${taskId}`
+      )
+    ),
     orderBy: desc(activityLogs.createdAt),
     with: {
       user: {

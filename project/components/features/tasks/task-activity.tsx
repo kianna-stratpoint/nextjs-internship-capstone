@@ -16,16 +16,12 @@ import {
 } from "lucide-react"
 
 import { getTaskActivityLogsAction } from "@/lib/actions/tasks"
+import { UserAvatar } from "@/components/shared/user-avatar"
 
 interface TaskActivityProps {
   taskId: string
   currentUserId: string
   createdAt?: string | Date
-}
-
-function getInitials(firstName?: string | null, lastName?: string | null) {
-  if (!firstName && !lastName) return "U"
-  return `${firstName?.charAt(0) || ""}${lastName?.charAt(0) || ""}`.toUpperCase()
 }
 
 function getActivityDescription(log: any, currentUserId: string) {
@@ -38,84 +34,119 @@ function getActivityDescription(log: any, currentUserId: string) {
   switch (log.action) {
     case "created":
       return `${subject} created this task`
+
     case "moved":
       if (metadata.from && metadata.to) {
-        return `${subject} moved this task from ${metadata.from} to ${metadata.to}`
+        return `${subject} moved this task from **${metadata.from}** to **${metadata.to}**`
       }
       return `${subject} moved this task`
+
     case "updated":
-      // Handle attachment-specific activity
       if (metadata.type === "attachments_added") {
         const count = metadata.count || metadata.fileNames?.length || 0
         const fileNames = metadata.fileNames || []
         if (count === 1 && fileNames.length === 1) {
-          return `${subject} attached ${fileNames[0]}`
+          return `${subject} attached **${fileNames[0]}**`
         }
         return `${subject} attached ${count} file${count !== 1 ? "s" : ""}`
       }
       if (metadata.type === "attachment_deleted") {
-        return `${subject} removed ${metadata.fileName || "an attachment"}`
+        return `${subject} removed attachment **${metadata.fileName || "a file"}**`
       }
       return `${subject} updated task details`
+
     case "completed":
       return `${subject} completed this task`
+
     case "restored":
-      return `${subject} uncompleted this task`
+      return `${subject} reopened this task`
+
     case "assigned": {
       const assigneeName = metadata.assigneeName || "a user"
       const isSelfAssign = metadata.assigneeId === currentUserId
       if (isSelfAssign && isMe) return "You assigned yourself to this task"
       if (isSelfAssign) return `${subject} assigned themselves to this task`
-      return `${subject} assigned ${assigneeName} to this task`
+      return `${subject} assigned **${assigneeName}** to this task`
     }
+
     case "unassigned": {
       const removedName = metadata.assigneeName || "a user"
       const isSelfRemove = metadata.assigneeId === currentUserId
       if (isSelfRemove && isMe) return "You removed yourself from this task"
       if (isSelfRemove) return `${subject} removed themselves from this task`
-      return `${subject} removed ${removedName} from this task`
+      return `${subject} removed **${removedName}** from this task`
     }
+
     case "deleted":
       return `${subject} deleted this task`
+
     case "commented":
+      if (metadata.preview) {
+        const preview =
+          metadata.preview.length > 60 ? metadata.preview.slice(0, 60) + "..." : metadata.preview
+        return `${subject} commented: "${preview}"`
+      }
       return `${subject} added a comment`
+
     default:
       return `${subject} performed an action`
   }
 }
 
 function getActivityIcon(action: string, metadata?: any) {
-  const className = "h-4 w-4 text-muted-foreground"
+  const className = "h-3.5 w-3.5"
 
-  // Check for attachment-specific actions
   if (
     action === "updated" &&
     metadata &&
     (metadata.type === "attachments_added" || metadata.type === "attachment_deleted")
   ) {
-    return <Paperclip className={className} />
+    return <Paperclip className={`${className} text-blue-500`} />
   }
 
   switch (action) {
     case "created":
-      return <Plus className={className} />
+      return <Plus className={`${className} text-emerald-500`} />
     case "moved":
-      return <ArrowRight className={className} />
+      return <ArrowRight className={`${className} text-violet-500`} />
     case "updated":
       return <Pencil className={className} />
     case "completed":
-      return <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+      return <CheckCircle2 className={`${className} text-emerald-500`} />
+    case "restored":
+      return <CheckCircle2 className={className} />
     case "assigned":
-      return <UserPlus className={className} />
+      return <UserPlus className={`${className} text-blue-500`} />
     case "unassigned":
-      return <UserMinus className={className} />
+      return <UserMinus className={`${className} text-amber-500`} />
     case "commented":
-      return <MessageCircle className={className} />
+      return <MessageCircle className={`${className} text-sky-500`} />
     case "deleted":
-      return <Trash2 className={className} />
+      return <Trash2 className={`${className} text-red-500`} />
     default:
       return <Activity className={className} />
   }
+}
+
+/**
+ * Renders text with **bold** markdown-style markers.
+ */
+function RichText({ text }: { text: string }) {
+  const parts = text.split(/(\*\*[^*]+\*\*)/)
+  return (
+    <>
+      {parts.map((part, i) => {
+        if (part.startsWith("**") && part.endsWith("**")) {
+          return (
+            <span key={i} className="font-semibold text-foreground">
+              {part.slice(2, -2)}
+            </span>
+          )
+        }
+        return <span key={i}>{part}</span>
+      })}
+    </>
+  )
 }
 
 export function TaskActivity({ taskId, currentUserId, createdAt }: TaskActivityProps) {
@@ -148,38 +179,53 @@ export function TaskActivity({ taskId, currentUserId, createdAt }: TaskActivityP
     <div className="space-y-4">
       <h3 className="font-sans text-xs font-bold uppercase text-muted-foreground">Activity</h3>
 
-      {/* SCROLLABLE WRAPPER */}
-      <div className="max-h-[250px] overflow-y-auto pr-4 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-muted hover:[&::-webkit-scrollbar-thumb]:bg-muted-foreground/50 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar]:w-1.5">
-        <div className="relative space-y-4 before:absolute before:inset-0 before:ml-3 before:h-full before:w-0.5 before:-translate-x-px before:bg-gradient-to-b before:from-transparent before:via-muted before:to-transparent md:before:mx-auto md:before:translate-x-0">
-          {/* Dynamic Logs from DB */}
-          {logs?.map((log: any) => (
-            <div key={log.id} className="group relative flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="z-10 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border bg-background">
-                  {getActivityIcon(log.action, log.metadata)}
+      <div className="max-h-[300px] overflow-y-auto pr-4 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-muted hover:[&::-webkit-scrollbar-thumb]:bg-muted-foreground/50 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar]:w-1.5">
+        <div className="relative space-y-1 before:absolute before:bottom-0 before:left-[11px] before:top-0 before:w-px before:bg-border">
+          {logs?.map((log: any) => {
+            const description = getActivityDescription(log, currentUserId)
+
+            return (
+              <div
+                key={log.id}
+                className="group relative flex items-start gap-3 rounded-md px-1 py-2"
+              >
+                {/* Avatar with icon overlay */}
+                <div className="relative z-10 shrink-0">
+                  <UserAvatar user={log.user} size="sm" />
+                  <div className="absolute -bottom-0.5 -right-0.5 flex h-3 w-3 items-center justify-center rounded-full border border-background bg-card">
+                    {getActivityIcon(log.action, log.metadata)}
+                  </div>
                 </div>
-                <p className="text-sm text-foreground">
-                  <span className="font-medium">{getActivityDescription(log, currentUserId)}</span>
+
+                {/* Content */}
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs text-muted-foreground">
+                    <RichText text={description} />
+                  </p>
+                  <p className="mt-0.5 text-[10px] text-muted-foreground/60">
+                    {timeAgo(log.createdAt)}
+                  </p>
+                </div>
+              </div>
+            )
+          })}
+
+          {/* Genesis — Task Creation */}
+          {createdAt && (
+            <div className="relative flex items-start gap-3 px-1 py-2">
+              <div className="relative z-10 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-border bg-background">
+                <Plus className="h-3 w-3 text-muted-foreground" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs text-muted-foreground">Task created</p>
+                <p className="mt-0.5 text-[10px] text-muted-foreground/60">
+                  {new Date(createdAt).toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                  })}
                 </p>
               </div>
-              <span className="ml-2 shrink-0 text-xs text-muted-foreground">
-                {timeAgo(log.createdAt)}
-              </span>
-            </div>
-          ))}
-
-          {/* The Genesis Block (Creation Date) */}
-          {createdAt && (
-            <div className="relative flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="z-10 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border bg-background">
-                  <Plus className="h-4 w-4 text-muted-foreground" />
-                </div>
-                <p className="text-sm text-foreground">Task created</p>
-              </div>
-              <span className="ml-2 shrink-0 text-xs text-muted-foreground">
-                {new Date(createdAt).toLocaleDateString()}
-              </span>
             </div>
           )}
         </div>

@@ -15,7 +15,7 @@ export default function PrivacyPolicyPage() {
         className="mb-8 inline-flex items-center gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
       >
         <ArrowLeft size={16} />
-        Back to Home
+        Back
       </Link>
 
       <div className="space-y-8 text-muted-foreground">

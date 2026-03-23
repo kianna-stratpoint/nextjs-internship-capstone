@@ -1,10 +1,5 @@
-/* ============================================
-   Settings Queries
-
-   Profile updates and user preferences.
-   ============================================ */
 import { clerkClient } from "@clerk/nextjs/server"
-import { eq } from "drizzle-orm"
+import { eq, inArray } from "drizzle-orm"
 import { db } from "@/lib/db"
 import { users } from "@/lib/db/schema"
 import type { UserPreferences } from "@/lib/db/schema"
@@ -25,7 +20,6 @@ export async function updateUserProfile(
 
   if (!updated) return null
 
-  // 2. Sync name to Clerk so the UserButton reflects changes
   try {
     const clerk = await clerkClient()
     await clerk.users.updateUser(updated.clerkId, {
@@ -39,6 +33,7 @@ export async function updateUserProfile(
 
   return updated
 }
+
 /**
  * Get the user's full preferences, merged with defaults.
  */
@@ -122,4 +117,35 @@ export async function isNotificationEnabled(
 ): Promise<boolean> {
   const prefs = await getUserPreferences(userId)
   return prefs.notifications[notificationType] ?? true
+}
+
+/**
+ * Bulk checks notification preferences for multiple users in a SINGLE query.
+ */
+export async function filterUsersWithNotificationEnabled(
+  userIds: string[],
+  notificationType: keyof UserPreferences["notifications"]
+): Promise<string[]> {
+  if (!userIds || userIds.length === 0) return []
+
+  const targetUsers = await db
+    .select({ id: users.id, preferences: users.preferences })
+    .from(users)
+    .where(inArray(users.id, userIds))
+
+  const { DEFAULT_USER_PREFERENCES } = await import("@/lib/db/schema")
+
+  const enabledUserIds = targetUsers
+    .filter((user) => {
+      const stored = (user.preferences as Partial<UserPreferences>) || {}
+
+      const isEnabled =
+        stored.notifications?.[notificationType] ??
+        DEFAULT_USER_PREFERENCES.notifications[notificationType]
+
+      return isEnabled
+    })
+    .map((user) => user.id)
+
+  return enabledUserIds
 }

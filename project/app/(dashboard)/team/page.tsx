@@ -10,8 +10,8 @@ import {
   Eye,
   Loader2,
   Mail,
-  ChevronDown,
-  Check,
+  ArrowUpDown,
+  Filter,
 } from "lucide-react"
 import { useTeamMembers } from "@/hooks/use-team-member"
 import { useProjectInvitations } from "@/hooks/use-invitations"
@@ -247,8 +247,8 @@ export default function TeamPage() {
         {/* Sort Dropdown */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm" className="gap-1.5 text-foreground">
-              <SlidersHorizontal className="h-3.5 w-3.5" />
+            <Button variant="outline" size="sm" className="gap-1.5 text-muted-foreground">
+              <ArrowUpDown size={16} />
               Sort
             </Button>
           </DropdownMenuTrigger>
@@ -267,8 +267,8 @@ export default function TeamPage() {
         {/* Filter Dropdown */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm" className="gap-1.5 text-foreground">
-              <SlidersHorizontal className="h-3.5 w-3.5" />
+            <Button variant="outline" size="sm" className="gap-1.5 text-muted-foreground">
+              <Filter size={16} />
               Filter
               {filterRole && (
                 <span className="ml-1 rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">

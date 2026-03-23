@@ -1,4 +1,4 @@
-import { eq, and, desc, asc, count, sql, or, exists, ilike } from "drizzle-orm"
+import { eq, and, desc, asc, count, sql, or, exists, ilike, inArray } from "drizzle-orm"
 import { db } from "@/lib/db"
 import {
   projects,
@@ -12,11 +12,10 @@ import {
   type NewProject,
 } from "@/lib/db/schema"
 import { logActivity } from "./activity"
-import { isNotificationEnabled } from "./settings"
+import { filterUsersWithNotificationEnabled } from "./settings"
 
 /**
  * Get all projects a user is a member of.
- * Filters, searches, and sorts directly at the database level using Drizzle.
  */
 export async function getProjectsByUserId(
   userId: string,
@@ -28,7 +27,6 @@ export async function getProjectsByUserId(
   const limit = searchParams?.limit || 20
   const offset = (page - 1) * limit
 
-  // Dynamic sorting logic
   let orderByLogic
   switch (searchParams?.sort) {
     case "newest":
@@ -46,7 +44,6 @@ export async function getProjectsByUserId(
       break
   }
 
-  // 1. Query the Database (Now with Pagination)
   const userProjects = await db.query.projects.findMany({
     limit,
     offset,
@@ -66,27 +63,25 @@ export async function getProjectsByUserId(
     ),
     with: {
       members: { with: { user: true } },
-      // Fetch tasks in the same query to avoid N+1 queries!
       tasks: {
-        columns: { id: true, isCompleted: true },
+        columns: { isCompleted: true },
       },
     },
     orderBy: [orderByLogic],
   })
 
-  // 2. Enrich data purely in memory (No extra DB calls!)
   const enriched = userProjects.map((project) => {
-    const userMembership = project.members.find((m) => m.userId === userId)
+    const { tasks, members, ...projectData } = project
 
-    // Calculate stats from the already-fetched tasks array
-    const totalTasks = project.tasks.length
-    const completedTasks = project.tasks.filter((t) => t.isCompleted).length
+    const userMembership = members.find((m) => m.userId === userId)
+    const totalTasks = tasks.length
+    const completedTasks = tasks.filter((t) => t.isCompleted).length
 
     return {
-      ...project,
+      ...projectData,
       memberRole: userMembership?.role ?? "viewer",
       isPinned: userMembership?.isPinned ?? false,
-      members: project.members,
+      members: members,
       _count: {
         tasks: totalTasks,
         completedTasks: completedTasks,
@@ -106,15 +101,11 @@ export async function getProjectsByUserId(
 
 /**
  * Get a single project by ID with full details.
- * Used for the Kanban board page.
  */
 export async function getProjectById(projectId: string, userId?: string | null) {
   const project = await db.query.projects.findFirst({
     where: and(
-      // 1. Must match the requested project ID
       eq(projects.id, projectId),
-
-      // 2. Access Control: Must be public OR user must be a member
       or(
         eq(projects.visibility, "public"),
         userId
@@ -126,17 +117,12 @@ export async function getProjectById(projectId: string, userId?: string | null) 
                   and(eq(projectMembers.projectId, projects.id), eq(projectMembers.userId, userId))
                 )
             )
-          : // If no userId is provided, this condition evaluates to false
-            eq(projects.id, "impossible_condition_to_fail_safely")
+          : eq(projects.id, "impossible_condition_to_fail_safely")
       )
     ),
     with: {
       createdBy: true,
-      members: {
-        with: {
-          user: true,
-        },
-      },
+      members: { with: { user: true } },
       labels: true,
       lists: {
         orderBy: (lists, { asc }) => [asc(lists.position)],
@@ -158,7 +144,6 @@ export async function getProjectById(projectId: string, userId?: string | null) 
 
 /**
  * Get the user's role in a project.
- * Returns null if user is not a member.
  */
 export async function getUserProjectRole(projectId: string, userId: string) {
   const membership = await db
@@ -171,12 +156,7 @@ export async function getUserProjectRole(projectId: string, userId: string) {
 }
 
 /**
- * Create a new project with default lists and admin membership.
- * Wraps everything in a single operation for consistency.
- */
-/**
- * Create a new project with default lists and admin membership.
- * Wraps everything in a single operation for consistency.
+ * Create a new project.
  */
 export async function createProject(
   data: Pick<
@@ -185,27 +165,19 @@ export async function createProject(
   >,
   creatorId: string
 ) {
-  // 1. Insert the project
   const [project] = await db
     .insert(projects)
-    .values({
-      ...data,
-      createdById: creatorId,
-    })
+    .values({ ...data, createdById: creatorId })
     .returning()
 
-  if (!project) {
-    throw new Error("Failed to create project. Database returned undefined.")
-  }
+  if (!project) throw new Error("Failed to create project.")
 
-  // 2. Add creator as admin
   await db.insert(projectMembers).values({
     projectId: project.id,
     userId: creatorId,
     role: "admin",
   })
 
-  // 3. Create default SYSTEM lists with specific types
   const defaultLists = [
     { title: "To Do", position: 0, color: "#64748B", type: "todo" as const, isSystem: true },
     {
@@ -219,15 +191,12 @@ export async function createProject(
     { title: "Done", position: 3000, color: "#10B981", type: "done" as const, isSystem: true },
   ]
 
-  await db.insert(lists).values(
-    defaultLists.map((list) => ({
-      ...list,
-      projectId: project.id,
-      createdById: creatorId,
-    }))
-  )
+  await db
+    .insert(lists)
+    .values(
+      defaultLists.map((list) => ({ ...list, projectId: project.id, createdById: creatorId }))
+    )
 
-  // 4. Log activity
   await db.insert(activityLogs).values({
     projectId: project.id,
     userId: creatorId,
@@ -241,8 +210,7 @@ export async function createProject(
 }
 
 /**
- * Create project invitations for emails.
- * NEW FUNCTION
+ * Create project invitations.
  */
 export async function createProjectInvitations(
   projectId: string,
@@ -252,25 +220,23 @@ export async function createProjectInvitations(
   if (!invites || invites.length === 0) return
 
   const expirationDate = new Date()
-  expirationDate.setDate(expirationDate.getDate() + 7) // Expires in 7 days
+  expirationDate.setDate(expirationDate.getDate() + 7)
 
   const inviteRecords = invites.map((invite) => ({
     projectId,
     invitedByUserId: inviterId,
     email: invite.email,
     role: invite.role,
-    token: crypto.randomUUID(), // Generates unique secure token
+    token: crypto.randomUUID(),
     expiresAt: expirationDate,
     status: "pending" as const,
   }))
 
   await db.insert(projectInvitations).values(inviteRecords)
-
-  // Optional: You could log a single activity for inviting multiple people here
 }
 
 /**
- * Update project details.
+ * Update project details
  */
 export async function updateProject(
   projectId: string,
@@ -305,47 +271,55 @@ export async function updateProject(
       entityId: projectId,
       metadata: { ...data, title: updated.title },
     })
-    const members = await db
-      .select({ userId: projectMembers.userId })
-      .from(projectMembers)
-      .where(eq(projectMembers.projectId, projectId))
 
-    const [updater] = await db
-      .select({ firstName: users.firstName, lastName: users.lastName })
-      .from(users)
-      .where(eq(users.id, userId))
-      .limit(1)
+    const [members, [updater]] = await Promise.all([
+      db
+        .select({ userId: projectMembers.userId })
+        .from(projectMembers)
+        .where(eq(projectMembers.projectId, projectId)),
+      db
+        .select({ firstName: users.firstName, lastName: users.lastName })
+        .from(users)
+        .where(eq(users.id, userId))
+        .limit(1),
+    ])
 
     const updaterName =
       [updater?.firstName, updater?.lastName].filter(Boolean).join(" ") || "Someone"
+    const targetMemberIds = members.map((m) => m.userId).filter((id) => id !== userId)
 
-    for (const member of members) {
-      if (member.userId === userId) continue
-      const shouldNotify = await isNotificationEnabled(member.userId, "projectUpdated")
-      if (shouldNotify) {
-        await db.insert(notifications).values({
-          userId: member.userId,
-          type: "project_updated",
+    if (targetMemberIds.length > 0) {
+      const enabledUserIds = await filterUsersWithNotificationEnabled(
+        targetMemberIds,
+        "projectUpdated"
+      )
+
+      if (enabledUserIds.length > 0) {
+        const notificationsToInsert = enabledUserIds.map((targetId) => ({
+          userId: targetId,
+          type: "project_updated" as const,
           title: "Project Updated",
           message: `${updaterName} updated "${updated.title}".`,
           actionUrl: `/projects/${projectId}`,
           metadata: { projectId, updatedBy: userId, fields: Object.keys(data) },
-        })
+        }))
+
+        await db.insert(notifications).values(notificationsToInsert)
       }
     }
   }
 
   return updated ?? null
 }
+
 /**
- * Delete a project. CASCADE handles all related data.
+ * Delete a project.
  */
 export async function deleteProject(projectId: string, userId: string) {
   const [project] = await db
     .select({ title: projects.title })
     .from(projects)
     .where(eq(projects.id, projectId))
-
   if (!project) throw new Error("Project not found")
 
   await db.delete(projects).where(eq(projects.id, projectId))
@@ -366,22 +340,16 @@ export async function deleteProject(projectId: string, userId: string) {
 export async function archiveProject(projectId: string, isArchived: boolean, userId: string) {
   const [updatedProject] = await db
     .update(projects)
-    .set({
-      isArchived,
-      updatedAt: new Date(),
-    })
+    .set({ isArchived, updatedAt: new Date() })
     .where(eq(projects.id, projectId))
     .returning()
 
   if (!updatedProject) throw new Error("Project not found")
 
-  const actionString = isArchived ? "archived" : "unarchived"
-
-  // Replaced 'logActivity' with your standard Drizzle insert
   await db.insert(activityLogs).values({
     projectId,
     userId,
-    action: actionString,
+    action: isArchived ? "archived" : "unarchived",
     entityType: "project",
     entityId: projectId,
     metadata: { title: updatedProject.title },
@@ -402,7 +370,7 @@ export async function setProjectStatus(
 }
 
 /**
- * Pin/unpin a project for a specific user.
+ * Pin/unpin a project.
  */
 export async function togglePinProject(projectId: string, userId: string, isPinned: boolean) {
   await db
@@ -456,7 +424,7 @@ export async function removeProjectMember(
 }
 
 /**
- * Change a member's role in a project.
+ * Change a member's role.
  */
 export async function changeProjectMemberRole(
   projectId: string,

@@ -244,6 +244,7 @@ export function CalendarEventModal({
                   onChange={setDate}
                   placeholder="Pick a date"
                   disabled={isBusy}
+                  className="text-foreground"
                 />
               </div>
 
@@ -254,6 +255,7 @@ export function CalendarEventModal({
                     value={endDate}
                     onChange={setEndDate}
                     placeholder="End date"
+                    className="text-foreground"
                     disabled={isBusy}
                     disabledDates={(d) => (date ? d < date : false)}
                   />
