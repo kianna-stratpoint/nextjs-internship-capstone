@@ -16,7 +16,7 @@ export function Footer() {
             Terms of Service
           </Link>
           <a
-            href="https://github.com"
+            href="https://github.com/kianna-stratpoint/nextjs-internship-capstone"
             target="_blank"
             rel="noopener noreferrer"
             className="transition-colors hover:text-foreground"

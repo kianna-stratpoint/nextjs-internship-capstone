@@ -1,3 +1,5 @@
+import Image from "next/image"
+
 export function Preview() {
   return (
     <section id="preview" className="relative px-4 pb-24 pt-16 sm:px-6 md:pb-32">
@@ -36,12 +38,51 @@ export function Preview() {
             </p>
           </div>
 
-          {/* Right — preview placeholders */}
+          {/* Right — Application Screenshots */}
           <div className="grid grid-cols-2 gap-3 sm:gap-4">
-            <div className="aspect-[4/3] rounded-xl bg-muted" />
-            <div className="mt-6 aspect-[4/3] rounded-xl bg-muted sm:mt-8" />
-            <div className="aspect-[4/3] rounded-xl bg-muted" />
-            <div className="mt-6 aspect-[4/3] rounded-xl bg-muted sm:mt-8" />
+            {/* Screenshot 1 */}
+            <div className="relative aspect-[4/3] overflow-hidden rounded-xl border border-border/50 bg-muted shadow-sm transition-transform hover:scale-[1.02]">
+              <Image
+                src="/images/preview-1-v2.png"
+                alt="Kanban Board View"
+                fill
+                className="object-cover object-top"
+                sizes="(max-width: 768px) 50vw, 33vw"
+              />
+            </div>
+
+            {/* Screenshot 2 (Staggered) */}
+            <div className="relative mt-6 aspect-[4/3] overflow-hidden rounded-xl border border-border/50 bg-muted shadow-sm transition-transform hover:scale-[1.02] sm:mt-8">
+              <Image
+                src="/images/preview-2-v2.png"
+                alt="Task Details Modal"
+                fill
+                className="object-cover object-top"
+                sizes="(max-width: 768px) 50vw, 33vw"
+              />
+            </div>
+
+            {/* Screenshot 3 */}
+            <div className="relative aspect-[4/3] overflow-hidden rounded-xl border border-border/50 bg-muted shadow-sm transition-transform hover:scale-[1.02]">
+              <Image
+                src="/images/preview-3-v2.png"
+                alt="Project Dashboard"
+                fill
+                className="object-cover object-top"
+                sizes="(max-width: 768px) 50vw, 33vw"
+              />
+            </div>
+
+            {/* Screenshot 4 (Staggered) */}
+            <div className="relative mt-6 aspect-[4/3] overflow-hidden rounded-xl border border-border/50 bg-muted shadow-sm transition-transform hover:scale-[1.02] sm:mt-8">
+              <Image
+                src="/images/preview-4.png"
+                alt="Team Activity Feed"
+                fill
+                className="object-cover object-top"
+                sizes="(max-width: 768px) 50vw, 33vw"
+              />
+            </div>
           </div>
         </div>
       </div>
