@@ -2,29 +2,31 @@
 
 import { Plus } from "lucide-react"
 import { useUIStore } from "@/stores/ui-store"
+import { Button } from "@/components/ui/button"
 
 interface CreateProjectButtonProps {
   children?: React.ReactNode
   className?: string
+  variant?: "default" | "outline" | "ghost" | "secondary"
 }
 
-export function CreateProjectButton({ children, className }: CreateProjectButtonProps) {
+export function CreateProjectButton({
+  children,
+  className = "font-semibold",
+  variant = "default",
+}: CreateProjectButtonProps) {
   const openCreateProjectModal = useUIStore((state) => state.openCreateProjectModal)
 
   return (
-    <button
-      onClick={openCreateProjectModal}
-      className={
-        className ||
-        "py-2x inline-flex items-center rounded-lg bg-foreground px-3 py-2 font-medium text-primary-foreground transition-colors hover:bg-foreground/70"
-      }
-    >
-      {children || (
+    <Button onClick={openCreateProjectModal} className={className} variant={variant}>
+      {children ? (
+        children
+      ) : (
         <>
           <Plus size={20} className="mr-1" />
           New Project
         </>
       )}
-    </button>
+    </Button>
   )
 }

@@ -19,10 +19,8 @@ interface ProjectsPageProps {
 export default async function ProjectsPage({ searchParams }: ProjectsPageProps) {
   const resolvedParams = await searchParams
 
-  // Default to "active" if no view parameter is in the URL
   const currentView = resolvedParams.view || "active"
 
-  // Determine the correct page title based on our 3-tab workflow
   let pageTitle = "Active Projects"
   if (currentView === "completed") {
     pageTitle = "Completed Projects"
@@ -40,10 +38,7 @@ export default async function ProjectsPage({ searchParams }: ProjectsPageProps) 
         <CreateProjectButton />
       </div>
 
-      {/* Toolbar */}
       <ProjectsToolbar />
-
-      {/* The Client Component that uses React Query */}
       <ProjectList />
     </div>
   )

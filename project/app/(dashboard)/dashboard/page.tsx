@@ -5,6 +5,12 @@ import { DashboardStats } from "@/components/features/dashboard/dashboard-stats"
 import { RecentProjects } from "@/components/features/dashboard/recent-projects"
 import { RecentActivity } from "@/components/features/dashboard/recent-activity"
 import { QuickActions } from "@/components/features/dashboard/quick-actions"
+import {
+  StatsCardsSkeleton,
+  RecentProjectsSkeleton,
+  RecentActivitySkeleton,
+  QuickActionsSkeleton,
+} from "@/components/skeletons"
 import type { Metadata } from "next"
 
 export const metadata: Metadata = {
@@ -19,31 +25,16 @@ export default async function DashboardPage() {
     <div className="space-y-6">
       <DashboardGreeting firstName={user?.firstName ?? undefined} />
 
-      {/* Stream Stats */}
-      <Suspense
-        fallback={
-          <div className="h-32 w-full animate-pulse rounded-xl bg-gray-200 dark:bg-gray-800" />
-        }
-      >
+      <Suspense fallback={<StatsCardsSkeleton />}>
         <DashboardStats />
       </Suspense>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_380px]">
-        {/* Stream Recent Projects */}
-        <Suspense
-          fallback={
-            <div className="h-96 w-full animate-pulse rounded-xl bg-gray-200 dark:bg-gray-800" />
-          }
-        >
+        <Suspense fallback={<RecentProjectsSkeleton />}>
           <RecentProjects />
         </Suspense>
 
-        {/* Stream Recent Activity */}
-        <Suspense
-          fallback={
-            <div className="h-96 w-full animate-pulse rounded-xl bg-gray-200 dark:bg-gray-800" />
-          }
-        >
+        <Suspense fallback={<RecentActivitySkeleton />}>
           <RecentActivity />
         </Suspense>
       </div>

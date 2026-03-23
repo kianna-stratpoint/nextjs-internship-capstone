@@ -1,10 +1,11 @@
 "use client"
 
-import { useMemo } from "react"
+import { useMemo, useEffect } from "react"
 import { useSearchParams } from "next/navigation"
-import { FolderKanban, Loader2, AlertCircle } from "lucide-react"
+import { FolderKanban } from "lucide-react"
 
 import { useProjects } from "@/hooks/use-projects"
+import { useUIStore } from "@/stores/ui-store"
 import { ProjectCard } from "./project-card"
 import { CreateProjectButton } from "./create-project-button"
 import type { ProjectCardData } from "@/types/index"
@@ -13,6 +14,7 @@ const PRIORITY_ORDER: Record<string, number> = { high: 0, medium: 1, low: 2 }
 
 export function ProjectList() {
   const searchParams = useSearchParams()
+  const { setGlobalError } = useUIStore()
 
   const query = searchParams.get("query")?.toLowerCase() || ""
   const view = searchParams.get("view") || "active"
@@ -26,6 +28,14 @@ export function ProjectList() {
 
   const { projects, isLoading, isError, error } = useProjects({ view })
 
+  useEffect(() => {
+    if (isError) {
+      setGlobalError(
+        error instanceof Error ? error.message : "Failed to load projects. Please try again."
+      )
+    }
+  }, [isError, error, setGlobalError])
+
   // --- FILTER & SORT LOGIC ---
   const { pinnedProjects, otherProjects, totalFiltered } = useMemo(() => {
     if (!projects) return { pinnedProjects: [], otherProjects: [], totalFiltered: 0 }
@@ -37,23 +47,18 @@ export function ProjectList() {
 
     // FILTER
     let filtered = projects.filter((p: ProjectCardData) => {
-      // Search query
       if (query && !p.title.toLowerCase().includes(query)) return false
 
-      // View (active/archived)
       if (view === "archived" && !p.isArchived) return false
       if (view === "active" && p.isArchived) return false
 
       if (view === "active" && p.status !== "active") return false
       if (view === "completed" && p.status !== "completed") return false
 
-      // Priority checkboxes
       if (priorities.length > 0 && !priorities.includes(p.priority)) return false
 
-      // Status checkboxes
       if (statuses.length > 0 && !statuses.includes(p.status)) return false
 
-      // Quick Filters
       if (isPinnedOnly && !p.isPinned) return false
       if (isOverdue) {
         if (!p.dueDate || p.status !== "active") return false
@@ -117,24 +122,20 @@ export function ProjectList() {
   }, [projects, query, view, sortBy, sortDir, priorityParam, statusParam, isOverdue, isPinnedOnly])
 
   // --- STATES ---
-  if (isLoading)
+  if (isLoading) {
     return (
-      <div className="flex justify-center py-20">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    )
-
-  if (isError) {
-    return (
-      <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-red-200 bg-red-50/50 py-20 text-red-800 dark:border-red-900/50 dark:bg-red-950/20 dark:text-red-400">
-        <AlertCircle className="mb-4 h-12 w-12 opacity-50" />
-        <h3 className="text-lg font-medium">Failed to load projects</h3>
-        <p className="mt-1 text-sm opacity-80">
-          {error instanceof Error ? error.message : "Something went wrong. Please try again."}
-        </p>
+      <div className="space-y-8 animate-in fade-in duration-500">
+        <div className="h-4 w-32 animate-pulse rounded bg-muted" />
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="h-48 animate-pulse rounded-xl bg-muted/50" />
+          ))}
+        </div>
       </div>
     )
   }
+
+  if (isError) return null
 
   if (!projects || projects.length === 0) {
     return (

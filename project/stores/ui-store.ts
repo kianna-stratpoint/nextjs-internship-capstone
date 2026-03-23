@@ -86,6 +86,18 @@ interface UIState {
   // --- Theme State ---
   theme: "light" | "dark"
   setTheme: (theme: "light" | "dark") => void
+
+  // --- Loading States ---
+  isGlobalLoading: boolean
+  setGlobalLoading: (isLoading: boolean) => void
+
+  isMutatingTask: boolean
+  setMutatingTask: (isMutating: boolean) => void
+
+  // --- Error States ---
+  globalError: string | null
+  setGlobalError: (error: string | null) => void
+  clearGlobalError: () => void
 }
 
 export const useUIStore = create<UIState>((set) => ({
@@ -131,4 +143,14 @@ export const useUIStore = create<UIState>((set) => ({
 
   theme: "light",
   setTheme: (theme) => set({ theme }),
+
+  isGlobalLoading: false,
+  setGlobalLoading: (isLoading) => set({ isGlobalLoading: isLoading }),
+
+  isMutatingTask: false,
+  setMutatingTask: (isMutating) => set({ isMutatingTask: isMutating }),
+
+  globalError: null,
+  setGlobalError: (error) => set({ globalError: error }),
+  clearGlobalError: () => set({ globalError: null }),
 }))
