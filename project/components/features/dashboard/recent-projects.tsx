@@ -1,7 +1,8 @@
 import Link from "next/link"
 import { requireAuth } from "@/lib/auth"
 import { getRecentProjects } from "@/lib/db/queries/dashboard"
-import { UserAvatar, StackedAvatars } from "@/components/shared/user-avatar"
+import { StackedAvatars } from "@/components/shared/user-avatar"
+import { ProgressBar } from "@/components/shared/progress-bar"
 import { timeAgo } from "@/lib/utils"
 
 export async function RecentProjects() {
@@ -26,11 +27,6 @@ export async function RecentProjects() {
       ) : (
         <div className="space-y-4">
           {projects.map((project) => {
-            const progress =
-              project._count.tasks === 0
-                ? 0
-                : Math.round((project._count.completedTasks / project._count.tasks) * 100)
-
             const priorityStyles = {
               high: "bg-red-500/10 text-red-600 dark:text-red-400",
               medium: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
@@ -62,21 +58,12 @@ export async function RecentProjects() {
 
                 {/* Right Side: Progress, Badges, Members */}
                 <div className="flex items-center gap-6">
-                  {/* Progress Bar */}
-                  <div className="flex items-center gap-3">
-                    <div className="h-1.5 w-24 overflow-hidden rounded-full bg-muted">
-                      <div
-                        className="h-full rounded-full transition-all duration-500"
-                        style={{
-                          backgroundColor: project.color || "#2D6EF7",
-                          width: `${progress}%`,
-                        }}
-                      />
-                    </div>
-                    <span className="w-8 text-right text-xs font-medium text-foreground">
-                      {progress}%
-                    </span>
-                  </div>
+                  <ProgressBar
+                    counts={project._count}
+                    color={project.color}
+                    showFraction={false}
+                    size="sm"
+                  />
 
                   {/* Status & Priority Badges (Hidden on tiny screens) */}
                   <div className="hidden items-center gap-2 md:flex">

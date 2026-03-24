@@ -39,6 +39,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { StackedAvatars } from "@/components/shared/user-avatar"
+import { ProgressBar } from "@/components/shared/progress-bar"
 
 import { type ProjectCardData } from "@/types/index"
 import { useProjects } from "@/hooks/use-projects"
@@ -47,14 +48,6 @@ import { useUIStore } from "@/stores/ui-store"
 import { formatDate } from "@/lib/utils"
 
 // --- Helpers ---
-
-function calculateProgress(counts?: { tasks?: number; completedTasks?: number }) {
-  const total = counts?.tasks || 0
-  const completed = counts?.completedTasks || 0
-  const percent = total === 0 ? 0 : Math.round((completed / total) * 100)
-  return { total, completed, percent }
-}
-
 function getProjectDateStatus(project: ProjectCardData) {
   if (project.status === "completed") {
     return {
@@ -147,8 +140,6 @@ export function ProjectCard({ project }: ProjectCardProps) {
     }
   }
 
-  // --- Pre-computed View Data ---
-  const progress = calculateProgress(activeProject._count)
   const dateInfo = getProjectDateStatus(activeProject)
 
   return (
@@ -257,21 +248,7 @@ export function ProjectCard({ project }: ProjectCardProps) {
           </p>
 
           <div className="mb-4">
-            <div className="mb-2 flex items-center justify-between text-xs font-medium text-muted-foreground">
-              <span>Progress</span>
-              <span className="text-foreground">
-                {progress.percent}% ({progress.completed}/{progress.total})
-              </span>
-            </div>
-            <div className="h-1.5 w-full overflow-hidden rounded-full bg-secondary">
-              <div
-                className="h-full rounded-full transition-all duration-500"
-                style={{
-                  width: `${progress.percent}%`,
-                  backgroundColor: project.color || "#2D6EF7",
-                }}
-              />
-            </div>
+            <ProgressBar counts={activeProject._count} color={project.color} size="sm" />
           </div>
 
           <div className="flex flex-wrap gap-2">

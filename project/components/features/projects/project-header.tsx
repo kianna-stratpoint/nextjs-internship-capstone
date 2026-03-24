@@ -52,12 +52,12 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { StackedAvatars } from "@/components/shared/user-avatar"
+import { ProgressBar } from "@/components/shared/progress-bar"
 
 import { useProjectHeaderLogic } from "@/hooks/use-project-header"
 import { useUIStore } from "@/stores/ui-store"
 
 // --- Helpers ---
-
 const PRIORITY_STYLES = {
   high: "bg-red-500/10 text-red-600 dark:text-red-400",
   medium: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
@@ -210,23 +210,16 @@ export function ProjectHeader({ project, isPinned }: any) {
 
           <div className="hidden h-6 w-px bg-border sm:block" />
 
-          {/* Fixed Progress */}
+          {/* Progress Bar */}
           <div className="w-full sm:w-56">
-            <div className="mb-1.5 flex items-center justify-between text-xs font-medium text-muted-foreground">
-              <span>Progress</span>
-              <span className="text-foreground">
-                {progressData.percent}% ({progressData.completed}/{progressData.total})
-              </span>
-            </div>
-            <div className="h-1.5 w-full overflow-hidden rounded-full bg-secondary">
-              <div
-                className="h-full rounded-full transition-all duration-500"
-                style={{
-                  width: `${progressData.percent}%`,
-                  backgroundColor: project.color || "#2D6EF7",
-                }}
-              />
-            </div>
+            <ProgressBar
+              counts={{
+                tasks: progressData.total,
+                completedTasks: progressData.completed,
+              }}
+              color={project.color}
+              size="sm"
+            />
           </div>
 
           <div className="hidden h-6 w-px bg-border sm:block" />

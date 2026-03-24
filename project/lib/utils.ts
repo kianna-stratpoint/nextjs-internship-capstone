@@ -5,10 +5,6 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-/**
- * Calculates a new fractional position between two items and detects if the
- * gap has become too small, requiring a background rebalance.
- */
 export function calculateFractionalPosition(
   prevPosition?: number,
   nextPosition?: number
@@ -44,9 +40,6 @@ export function calculateFractionalPosition(
   return { position: newPosition, needsRebalance }
 }
 
-/**
- * Converts a date to a relative time string (e.g., "just now", "5m ago", "2 hours ago").
- */
 export function timeAgo(dateInput: Date | string): string {
   const date = new Date(dateInput)
   const now = new Date()
@@ -83,10 +76,6 @@ export function timeAgo(dateInput: Date | string): string {
   return yearsPast === 1 ? "1 year ago" : `${yearsPast} years ago`
 }
 
-/**
- * Takes the date and a specific format "preset".
- */
-
 type DateFormat = "full" | "long" | "shortWithYear" | "short"
 
 export function formatDate(date: Date | string, format: DateFormat = "shortWithYear"): string {
@@ -94,7 +83,7 @@ export function formatDate(date: Date | string, format: DateFormat = "shortWithY
 
   switch (format) {
     case "full":
-      // e.g., "Tuesday, March 24, 2026" (For Dashboard Greeting)
+      // "Tuesday, March 24, 2026" (For Dashboard Greeting)
       return d.toLocaleDateString("en-US", {
         weekday: "long",
         year: "numeric",
@@ -102,14 +91,21 @@ export function formatDate(date: Date | string, format: DateFormat = "shortWithY
         day: "numeric",
       })
     case "long":
-      // e.g., "March 24, 2026" (For Date Picker)
+      // "March 24, 2026" (For Date Picker)
       return d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
     case "short":
-      // e.g., "Mar 24" (For Task Cards)
+      // "Mar 24" (For Task Cards)
       return d.toLocaleDateString("en-US", { month: "short", day: "numeric" })
     case "shortWithYear":
     default:
-      // e.g., "Mar 24, 2026" (For Project Cards)
+      // "Mar 24, 2026" (For Project Cards)
       return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
   }
+}
+
+export function calculateProgress(counts?: { tasks?: number; completedTasks?: number }) {
+  const total = counts?.tasks || 0
+  const completed = counts?.completedTasks || 0
+  const percent = total === 0 ? 0 : Math.round((completed / total) * 100)
+  return { total, completed, percent }
 }
