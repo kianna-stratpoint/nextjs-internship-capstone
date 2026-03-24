@@ -13,7 +13,6 @@ export function ThemeToggle() {
     setMounted(true)
   }, [])
 
-  // Render nothing until mounted to avoid hydration mismatch
   if (!mounted) return null
 
   return (

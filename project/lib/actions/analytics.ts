@@ -18,8 +18,9 @@ import {
   getMemberLeaderboard,
   getTasksByStatus,
   getTasksByPriority,
-  type TimeRange,
 } from "@/lib/db/queries/analytics"
+
+import type { TimeRange } from "@/types/analytics"
 
 export async function getProjectAnalyticsAction(projectId: string, range: TimeRange = "30d") {
   try {

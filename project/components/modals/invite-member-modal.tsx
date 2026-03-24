@@ -35,7 +35,6 @@ export function InviteMemberModal() {
 
   const handleClose = () => {
     closeInviteMemberModal()
-    // Reset after close animation
     setTimeout(() => {
       setEmail("")
       setRole("contributor")

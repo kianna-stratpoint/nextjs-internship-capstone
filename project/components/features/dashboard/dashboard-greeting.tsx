@@ -1,17 +1,10 @@
+import { formatDate } from "@/lib/utils"
+
 function getGreeting(): string {
   const hour = new Date().getHours()
   if (hour < 12) return "GOOD MORNING"
   if (hour < 18) return "GOOD AFTERNOON"
   return "GOOD EVENING"
-}
-
-function getFormattedDate(): string {
-  return new Date().toLocaleDateString("en-US", {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  })
 }
 
 interface DashboardGreetingProps {
@@ -30,7 +23,7 @@ export function DashboardGreeting({ firstName = "there" }: DashboardGreetingProp
         <span className="text-brand">.</span>
       </h1>
 
-      <p className="mt-0.5 text-sm text-muted-foreground">{getFormattedDate()}</p>
+      <p className="mt-0.5 text-sm text-muted-foreground">{formatDate(new Date(), "full")}</p>
     </div>
   )
 }

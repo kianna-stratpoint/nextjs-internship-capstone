@@ -1,16 +1,5 @@
 "use client"
 
-/* ============================================
-   AssigneeSelector
-
-   Reusable multi-select dropdown for assigning
-   project members to a task. Shows avatar, name,
-   role, and checkbox for each member.
-
-   Used in: create-task-modal, task-sheet,
-   inline task creation, task-card click.
-   ============================================ */
-
 import { useState, useMemo } from "react"
 import { Check, Search, Loader2, Users, UserPlus } from "lucide-react"
 import { useQuery } from "@tanstack/react-query"
@@ -33,15 +22,10 @@ const ROLE_STYLES: Record<string, string> = {
 
 interface AssigneeSelectorProps {
   projectId: string
-  /** Currently assigned user IDs */
   assignedUserIds: string[]
-  /** Called when an assignment is toggled */
   onToggle: (userId: string, isAssigning: boolean) => void
-  /** Optional: disable interactions */
   disabled?: boolean
-  /** Custom trigger element — if not provided, renders default button */
   trigger?: React.ReactNode
-  /** Alignment of the popover */
   align?: "start" | "center" | "end"
 }
 
@@ -178,10 +162,6 @@ export function AssigneeSelector({
 
 //* ==================== STACKED AVATARS ==================== */
 
-/**
- * Display stacked assignee avatars with overflow count.
- * Used on task cards and anywhere assignees need a compact display.
- */
 export function AssigneeAvatars({
   assignees,
   max = 3,

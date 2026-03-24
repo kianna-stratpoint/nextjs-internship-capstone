@@ -1,18 +1,5 @@
 "use client"
 
-/* ============================================
-   UserAvatar — Centralized avatar component
-
-   Fallback priority:
-   1. Custom avatar URL (imageUrl prop)
-   2. Initials from firstName/lastName
-   3. Generic "U" fallback
-
-   Usage:
-     <UserAvatar user={user} size="md" />
-     <UserAvatar firstName="Alex" lastName="M" imageUrl={url} size="sm" />
-   ============================================ */
-
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { cn } from "@/lib/utils"
 
@@ -28,19 +15,16 @@ const SIZE_CLASSES = {
 type AvatarSize = keyof typeof SIZE_CLASSES
 
 interface UserAvatarProps {
-  /** Pass a user object with optional firstName, lastName, imageUrl */
   user?: {
     firstName?: string | null
     lastName?: string | null
     imageUrl?: string | null
   } | null
-  /** Or pass individual props */
   firstName?: string | null
   lastName?: string | null
   imageUrl?: string | null
   size?: AvatarSize
   className?: string
-  /** Show a colored ring border */
   showBorder?: boolean
 }
 
@@ -59,7 +43,6 @@ export function UserAvatar({
   className,
   showBorder = false,
 }: UserAvatarProps) {
-  // Prefer individual props over user object
   const firstName = propFirstName ?? user?.firstName
   const lastName = propLastName ?? user?.lastName
   const imageUrl = propImageUrl ?? user?.imageUrl
@@ -79,10 +62,6 @@ export function UserAvatar({
 
 /* ==================== STACKED AVATARS ==================== */
 
-/**
- * Display a row of stacked avatars with +N overflow.
- * Replaces AssigneeAvatars from assignee-selector.tsx
- */
 export function StackedAvatars({
   users,
   max = 3,

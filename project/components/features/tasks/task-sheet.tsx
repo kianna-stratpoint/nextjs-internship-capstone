@@ -106,7 +106,7 @@ export function TaskSheet({
   )
   const [labelInput, setLabelInput] = useState("")
 
-  // New file picker state (files to upload on save)
+  // File picker state
   const [pendingFiles, setPendingFiles] = useState<File[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -120,7 +120,6 @@ export function TaskSheet({
   const [isSaving, setIsSaving] = useState(false)
   const [errors, setErrors] = useState<{ title?: string; dates?: string }>({})
 
-  // ── Fetch full task data (with attachments) directly from DB ──
   const { data: fullTask } = useQuery({
     queryKey: ["task-detail", task?.id],
     queryFn: async () => {
@@ -131,7 +130,6 @@ export function TaskSheet({
     enabled: isOpen && !!task?.id,
   })
 
-  // Attachments come from the fresh query, not the stale board prop
   const existingAttachments = fullTask?.attachments || []
 
   const { data: currentUser, isLoading: isUserLoading } = useQuery({
@@ -199,14 +197,12 @@ export function TaskSheet({
     setIsSaving(true)
 
     try {
-      // 1. Upload pending files → UploadThing → save metadata in DB
       if (pendingFiles.length > 0) {
         await addAttachments({ taskId: task.id, files: pendingFiles })
         setPendingFiles([])
         queryClient.invalidateQueries({ queryKey: ["task-detail", task.id] })
       }
 
-      // 2. Save task field updates
       await updateTask({
         taskId: task.id,
         data: {

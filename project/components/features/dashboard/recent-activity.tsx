@@ -5,8 +5,6 @@ import { timeAgo } from "@/lib/utils"
 import { UserAvatar } from "@/components/shared/user-avatar"
 
 // --- Types ---
-
-// 1. Strictly type the actions based on your switch statement
 type ActivityAction =
   | "created"
   | "updated"

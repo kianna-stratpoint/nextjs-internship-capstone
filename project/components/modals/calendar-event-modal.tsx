@@ -60,9 +60,6 @@ export function CalendarEventModal({
   const [projectId, setProjectId] = useState<string>("personal")
   const [error, setError] = useState<string | null>(null)
 
-  // Reset form when modal opens
-  // Remove the useEffect entirely and replace with:
-
   const [prevOpen, setPrevOpen] = useState(false)
 
   if (open !== prevOpen) {
@@ -116,7 +113,6 @@ export function CalendarEventModal({
       return
     }
 
-    // Build start and end dates
     let startDate = new Date(date)
     let computedEndDate: Date
 
@@ -136,7 +132,6 @@ export function CalendarEventModal({
         computedEndDate.setHours(23, 59, 59, 999)
       }
     } else {
-      // Single-day: end = same day end of day (or start + 1 hour if timed)
       computedEndDate = new Date(startDate)
       if (endTime) {
         const [hours, minutes] = endTime.split(":").map(Number)

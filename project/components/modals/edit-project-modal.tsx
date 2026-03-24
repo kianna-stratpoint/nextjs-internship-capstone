@@ -79,22 +79,18 @@ export function EditProjectModal() {
         data: formData,
       })) as any
 
-      // 1. Catch Server Action validation errors
       if (result?.fieldErrors) {
         setFieldErrors(result.fieldErrors)
-        return // Keep modal open
+        return
       }
 
-      // 2. Catch general server errors (e.g., Unauthorized)
       if (result?.error) {
         setError(result.error)
-        return // Keep modal open
+        return
       }
 
-      // 3. Success!
       handleClose()
     } catch (err: any) {
-      // Fallback for network crashes
       setError(err.message || "An unexpected error occurred.")
     }
   }

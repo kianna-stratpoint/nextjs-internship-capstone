@@ -56,7 +56,6 @@ export function CreateProjectModal() {
     e.preventDefault()
     if (!inviteEmail.trim() || !inviteEmail.includes("@")) return
 
-    // Prevent inviting yourself
     if (inviteEmail === user?.primaryEmailAddress?.emailAddress) {
       toast({
         title: "Oops!",
@@ -83,19 +82,16 @@ export function CreateProjectModal() {
     try {
       const result = (await createProject(formData)) as any
 
-      // 1. Check if the server action returned validation errors
       if (result?.fieldErrors) {
         setFieldErrors(result.fieldErrors)
-        return // Stop here so the modal stays open!
+        return
       }
 
-      // 2. Check for a general server error
       if (result?.error) {
         setError(result.error)
-        return // Stop here!
+        return
       }
 
-      // 3. Success! Close modal and navigate
       handleClose()
 
       if (result?.projectId) {

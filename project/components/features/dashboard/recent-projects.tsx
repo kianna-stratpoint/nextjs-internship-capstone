@@ -4,8 +4,6 @@ import { getRecentProjects } from "@/lib/db/queries/dashboard"
 import { UserAvatar, StackedAvatars } from "@/components/shared/user-avatar"
 import { timeAgo } from "@/lib/utils"
 
-// --- Helper Functions ---
-
 export async function RecentProjects() {
   const { dbUserId: userId } = await requireAuth()
   const projects = await getRecentProjects(userId)
@@ -28,13 +26,11 @@ export async function RecentProjects() {
       ) : (
         <div className="space-y-4">
           {projects.map((project) => {
-            // Calculate progress percentage
             const progress =
               project._count.tasks === 0
                 ? 0
                 : Math.round((project._count.completedTasks / project._count.tasks) * 100)
 
-            // Badge Color Maps
             const priorityStyles = {
               high: "bg-red-500/10 text-red-600 dark:text-red-400",
               medium: "bg-amber-500/10 text-amber-600 dark:text-amber-400",

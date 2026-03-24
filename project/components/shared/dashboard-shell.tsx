@@ -1,10 +1,3 @@
-/* ============================================
-   Client component that handles:
-   - Sidebar open/close state
-   - Onboarding redirect check
-   - Renders Sidebar + TopNav + main content
-   ============================================ */
-
 "use client"
 
 import type React from "react"
@@ -28,8 +21,6 @@ export function DashboardShell({ children, onboardingComplete }: DashboardShellP
   const pathname = usePathname()
   const router = useRouter()
 
-  // Redirect to onboarding if not complete
-  // (skip if already on the onboarding page)
   useEffect(() => {
     if (!onboardingComplete && pathname !== "/onboarding") {
       router.replace("/onboarding")
@@ -42,7 +33,6 @@ export function DashboardShell({ children, onboardingComplete }: DashboardShellP
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
-      {/* Mobile overlay */}
       {isSidebarOpen && (
         <div
           className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm lg:hidden"

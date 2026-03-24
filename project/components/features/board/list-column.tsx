@@ -141,9 +141,8 @@ export function ListColumn({
 
   const isOnlyDoneList = list.type === "done" && doneListsCount <= 1
   const canDeleteThisList =
-    !isOnlyDoneList && canModifyBoard && (list.createdById === currentUserId || canModifyBoard) // Adjust based on your actual admin check
+    !isOnlyDoneList && canModifyBoard && (list.createdById === currentUserId || canModifyBoard)
 
-  // If this is the floating overlay, we strip the DND hooks and just render it normally with a highlight
   if (isOverlay) {
     return (
       <div className="flex max-h-full w-80 flex-shrink-0 rotate-2 flex-col rounded-xl border bg-secondary/30 opacity-90 shadow-xl ring-2 ring-primary">
@@ -242,7 +241,6 @@ export function ListColumn({
 
           {canModifyBoard && (
             <DropdownMenu>
-              {/* onPointerDown={(e) => e.stopPropagation()} stops the drag event when clicking the menu! */}
               <DropdownMenuTrigger asChild onPointerDown={(e) => e.stopPropagation()}>
                 <Button
                   variant="ghost"

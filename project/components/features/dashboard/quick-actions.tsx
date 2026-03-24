@@ -30,14 +30,12 @@ export function QuickActions() {
   const [isPickerOpen, setIsPickerOpen] = useState(false)
   const [selectedProjectId, setSelectedProjectId] = useState("")
 
-  // Only show projects where the user is admin (can invite)
   const adminProjects =
     projects?.filter(
       (p: any) => p.status === "active" && !p.isArchived && p.memberRole === "admin"
     ) || []
 
   const handleInviteClick = () => {
-    // If user is admin of exactly one project, skip the picker
     if (adminProjects.length === 1) {
       openInviteMemberModal(adminProjects[0]!.id)
       return
@@ -68,8 +66,8 @@ export function QuickActions() {
         </div>
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          {/* Create New Project — primary dark CTA */}
-          <CreateProjectButton className="group flex w-full items-center gap-4 rounded-xl bg-primary p-5 text-left text-primary-foreground transition-colors hover:bg-primary/90">
+          {/* Create New Project */}
+          <CreateProjectButton className="group flex h-full w-full items-center justify-start gap-4 rounded-xl bg-primary p-5 text-left text-primary-foreground transition-colors hover:bg-primary/90">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary-foreground/10">
               <Plus size={20} />
             </div>

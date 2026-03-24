@@ -32,7 +32,6 @@ interface UpcomingDeadlinesProps {
 }
 
 export function UpcomingDeadlines({ events }: UpcomingDeadlinesProps) {
-  // Filter to next 14 days, sorted by nearest
   const now = new Date()
   now.setHours(0, 0, 0, 0)
   const twoWeeksOut = new Date(now)

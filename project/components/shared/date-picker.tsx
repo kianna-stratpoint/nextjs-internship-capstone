@@ -3,7 +3,7 @@
 import * as React from "react"
 import { CalendarIcon } from "lucide-react"
 
-import { cn } from "@/lib/utils"
+import { cn, formatDate } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
@@ -25,15 +25,6 @@ export function DatePicker({
   className,
   disabledDates,
 }: DatePickerProps) {
-  // Helper to format the date natively (Replaces date-fns "PPP")
-  const formatDate = (date: Date) => {
-    return date.toLocaleDateString("en-US", {
-      month: "long",
-      day: "numeric",
-      year: "numeric",
-    })
-  }
-
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -47,7 +38,7 @@ export function DatePicker({
           )}
         >
           <CalendarIcon className="mr-2 h-4 w-4 text-muted-foreground" />
-          {value ? formatDate(value) : placeholder}
+          {value ? formatDate(value, "long") : placeholder}
         </Button>
       </PopoverTrigger>
 

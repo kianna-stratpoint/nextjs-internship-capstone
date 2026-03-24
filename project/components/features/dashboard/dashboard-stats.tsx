@@ -1,10 +1,9 @@
 import { requireAuth } from "@/lib/auth"
 import { getDashboardStats } from "@/lib/db/queries/dashboard"
 import { FolderOpen, Clock, CheckCircle, Users, type LucideIcon } from "lucide-react"
-// Import the type with an alias to avoid naming conflicts with the component
+
 import type { DashboardStats as DashboardStatsType } from "@/types"
 
-// We can also strongly type the UI array mapping to ensure no missing properties
 interface StatCard {
   label: string
   value: number
@@ -19,7 +18,6 @@ interface StatCard {
 export async function DashboardStats() {
   const { dbUserId: userId } = await requireAuth()
 
-  // Explicitly apply the type to your fetched data
   const data: DashboardStatsType = await getDashboardStats(userId)
 
   const stats: StatCard[] = [

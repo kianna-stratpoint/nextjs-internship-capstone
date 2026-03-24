@@ -9,8 +9,9 @@
 import { eq, and, count, sql, gte, lte, desc, inArray } from "drizzle-orm"
 import { db } from "@/lib/db"
 import { tasks, taskAssignees, projectMembers, activityLogs, users, lists } from "@/lib/db/schema"
+import type { TimeRange } from "@/types/analytics"
 
-export type TimeRange = "7d" | "30d" | "all"
+export type { TimeRange } from "@/types/analytics"
 
 function getDateThreshold(range: TimeRange): Date | null {
   if (range === "all") return null

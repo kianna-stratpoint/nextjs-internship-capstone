@@ -125,6 +125,7 @@ export type ActivityLogWithUser = ActivityLog & {
 /** Member with user data (for Team page) */
 export type MemberWithUser = ProjectMember & {
   user: User
+  project?: Project | null
 }
 
 /** Member with user and project data (for cross-project views) */

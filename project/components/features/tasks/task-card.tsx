@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast"
 import { DatePicker } from "@/components/shared/date-picker"
 import { AssigneeAvatars } from "@/components/shared/assignee-selector"
 import { AssigneeSelector } from "@/components/shared/assignee-selector"
+import { formatDate } from "@/lib/utils"
 
 import {
   DropdownMenu,
@@ -72,13 +73,6 @@ export function TaskCard({
     }
   }
 
-  const formatDate = (dateString: Date | string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-    })
-  }
-
   const getDueDateColor = (dueDate: Date | string | null, isCompleted: boolean) => {
     if (!dueDate || isCompleted) return "text-muted-foreground bg-secondary/50"
 
@@ -106,7 +100,6 @@ export function TaskCard({
       onSelect?.(task.id, true)
       return
     }
-    // If they hold Shift, add range selection later!
 
     onClick?.(task)
   }
@@ -241,7 +234,7 @@ export function TaskCard({
           >
             <Calendar size={12} />
             <span className="whitespace-nowrap">
-              {task.dueDate ? formatDate(task.dueDate) : "No Due Date"}
+              {task.dueDate ? formatDate(task.dueDate, "short") : "No Due Date"}
             </span>
           </div>
         </div>

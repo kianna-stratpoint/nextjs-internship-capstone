@@ -9,7 +9,7 @@
 
 import { useQuery } from "@tanstack/react-query"
 import { getProjectAnalyticsAction } from "@/lib/actions/analytics"
-import type { TimeRange } from "@/lib/db/queries/analytics"
+import type { TimeRange, AnalyticsData } from "@/types/analytics"
 
 export function useAnalytics(projectId: string | null, range: TimeRange = "30d") {
   const {
@@ -26,7 +26,7 @@ export function useAnalytics(projectId: string | null, range: TimeRange = "30d")
       return result.data
     },
     enabled: !!projectId,
-    staleTime: 60_000, // Analytics data doesn't need to be super fresh
+    staleTime: 60_000,
   })
 
   return {

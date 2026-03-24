@@ -29,10 +29,10 @@ export default function PrivacyPolicyPage() {
         <section className="space-y-4">
           <h2 className="text-2xl font-semibold text-foreground">1. Introduction</h2>
           <p className="leading-relaxed">
-            Welcome to FLOE (&quot;Flow Like Operations Engineering&quot;). Please note that this
-            application is an academic capstone project developed for educational and portfolio
-            demonstration purposes. This Privacy Policy explains how we collect, use, and protect
-            your information when you interact with our application.
+            Welcome to FLOE. Please note that this application is an academic capstone project
+            developed for educational and portfolio demonstration purposes. This Privacy Policy
+            explains how we collect, use, and protect your information when you interact with our
+            application.
           </p>
         </section>
 

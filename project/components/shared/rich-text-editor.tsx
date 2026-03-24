@@ -30,7 +30,6 @@ export function RichTextEditor({ value, onChange, placeholder, disabled }: RichT
     },
     editorProps: {
       attributes: {
-        // Tailwind classes to style the editable area
         class:
           "min-h-[120px] w-full rounded-b-md border-t-0 bg-transparent px-3 py-2 text-sm focus-visible:outline-none prose prose-sm dark:prose-invert max-w-none text-foreground",
       },

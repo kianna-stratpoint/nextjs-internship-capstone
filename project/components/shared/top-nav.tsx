@@ -15,7 +15,6 @@ const ClerkUserButton = dynamic(
       return function ClerkUser({ theme }: { theme: string }) {
         const isDark = theme === "dark"
 
-        // 1. Extract the styling into a reusable object
         const customAppearance = {
           baseTheme: isDark ? dark : undefined,
           variables: isDark

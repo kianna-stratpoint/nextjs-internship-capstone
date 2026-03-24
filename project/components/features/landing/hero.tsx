@@ -88,8 +88,7 @@ export async function Hero() {
         </h1>
 
         <p className="mx-auto mb-8 max-w-md text-sm leading-relaxed sm:max-w-lg sm:text-base md:mb-10 md:max-w-xl md:text-lg">
-          Flow Like Operations Engineering — where your team&apos;s work moves with intention, not
-          friction.
+          Go with the FLOE — where your work moves with intention, not friction.
         </p>
 
         {userId ? (
