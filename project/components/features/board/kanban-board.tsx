@@ -9,6 +9,7 @@ import {
   pointerWithin,
   rectIntersection,
   getFirstCollision,
+  closestCorners,
   KeyboardSensor,
   PointerSensor,
   useSensor,
@@ -80,6 +81,25 @@ interface KanbanBoardProps {
 function customCollisionDetection(
   args: Parameters<CollisionDetection>[0]
 ): ReturnType<CollisionDetection> {
+  const activeType = args.active.data.current?.type?.toLowerCase()
+
+  if (activeType === "list") {
+    const { pointerCoordinates, droppableContainers, droppableRects } = args
+
+    if (pointerCoordinates) {
+      for (const container of droppableContainers) {
+        if (container.data.current?.type?.toLowerCase() === "list") {
+          const rect = droppableRects.get(container.id)
+          if (rect && pointerCoordinates.x >= rect.left && pointerCoordinates.x <= rect.right) {
+            return [{ id: container.id, data: container.data.current }]
+          }
+        }
+      }
+    }
+    return closestCorners(args)
+  }
+
+  // --- Normal Task Collision ---
   const pointerCollisions = pointerWithin(args)
 
   if (pointerCollisions.length > 0) {
@@ -93,7 +113,6 @@ function customCollisionDetection(
     if (closestCollisions.length > 0) {
       return closestCollisions
     }
-
     return pointerCollisions
   }
 
@@ -407,16 +426,13 @@ export function KanbanBoard({ project, initialLists, currentUserId }: KanbanBoar
       const reordered = arrayMove(storeLists, oldIndex, newIndex)
 
       // Calculate fractional position
-      const prev = reordered[newIndex - 1]?.position
-      const next = reordered[newIndex + 1]?.position
-      const newPosition =
-        prev !== undefined && next !== undefined
-          ? (prev + next) / 2
-          : prev !== undefined
-            ? prev + 65536
-            : next !== undefined
-              ? next / 2
-              : 65536
+      const prevList = reordered[newIndex - 1]
+      const nextList = reordered[newIndex + 1]
+
+      const { position: newPosition } = calculateFractionalPosition(
+        prevList?.position,
+        nextList?.position
+      )
 
       // Optimistic update
       const updatedLists = reordered.map((list) =>
@@ -425,7 +441,7 @@ export function KanbanBoard({ project, initialLists, currentUserId }: KanbanBoar
       setBoardData(projectId, updatedLists)
 
       // Backend
-      moveList({ listId: activeListId, position: Math.round(newPosition) })
+      moveList({ listId: activeListId, position: newPosition })
       clearActiveDragItem()
       return
     }

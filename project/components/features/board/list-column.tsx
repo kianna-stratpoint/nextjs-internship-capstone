@@ -328,7 +328,7 @@ export function ListColumn({
                 value={newTaskDueDate}
                 onChange={setNewTaskDueDate}
                 placeholder="Due date"
-                className="flex h-7 w-[95px] items-center gap-1 rounded-md border border-input px-2 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                className="flex h-7 w-auto min-w-[95px] items-center gap-1 rounded-md border border-input px-2 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
               />
 
               {/* Assignees */}
