@@ -1,9 +1,0 @@
-// Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
-
-exports[`CreateTaskButton Component matches snapshot 1`] = `
-<div>
-  <button>
-    Add New Task
-  </button>
-</div>
-`;
