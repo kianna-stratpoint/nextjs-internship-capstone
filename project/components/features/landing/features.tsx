@@ -1,13 +1,3 @@
-/* ============================================
-   File: components/landing/features.tsx
-   Action: REPLACE existing features.tsx
-   
-   - Hidden scrollbar (CSS + utility)
-   - 1 card on mobile, 2 on md, 3 on lg
-   - Cards sized to fill available space per breakpoint
-   - FLOE. in span with font-black
-   ============================================ */
-
 "use client"
 
 import { useRef } from "react"
@@ -81,7 +71,7 @@ export function Features() {
         {/* Badge */}
         <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-border px-3 py-1 text-xs font-medium">
           <span className="h-1.5 w-1.5 rounded-full bg-brand" />
-          Built for software teams
+          Built for you
         </div>
 
         {/* Heading row with carousel arrows */}
@@ -114,8 +104,8 @@ export function Features() {
         </div>
 
         <p className="mb-8 max-w-lg text-sm leading-relaxed text-muted-foreground md:text-base">
-          Designed to fit the way software teams actually work. FLOE. keeps your team&apos;s work
-          moving — from idea to done — without the chaos of overcomplicated tools.
+          Designed to fit the way how you actually work. FLOE. keeps your work moving — from idea to
+          done — without the chaos of overcomplicated tools.
         </p>
 
         {/* Carousel — no visible scrollbar */}

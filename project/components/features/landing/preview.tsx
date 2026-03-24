@@ -34,7 +34,7 @@ export function Preview() {
             </h2>
             <p className="max-w-md text-sm leading-relaxed text-muted-foreground md:text-base">
               A calm, focused interface that gets out of your way. No information overload. No
-              feature cemetery. Just the tools your team actually uses.
+              feature cemetery. Just the tools you actually use.
             </p>
           </div>
 
