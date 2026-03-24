@@ -1,17 +1,6 @@
 import { useState, useRef } from "react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
-import {
-  Loader2,
-  Plus,
-  Paperclip,
-  Tags,
-  X,
-  FileText,
-  ImageIcon,
-  File as FileIcon,
-  ExternalLink,
-  Trash2,
-} from "lucide-react"
+import { Loader2, Paperclip, Tags, X, ExternalLink, Trash2 } from "lucide-react"
 
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { Input } from "@/components/ui/input"
@@ -26,32 +15,13 @@ import {
 import { DatePicker } from "@/components/shared/date-picker"
 import { RichTextEditor } from "@/components/shared/rich-text-editor"
 import { AssigneeSelector, AssigneeAvatars } from "@/components/shared/assignee-selector"
-import { TaskComments } from "./task-comments"
+import { FileIcon } from "@/components/shared/file-icon"
+import { formatFileSize } from "@/lib/utils"
 import { getCurrentDbUserAction } from "@/lib/actions/users"
 import { getTaskByIdAction, assignTaskAction, unassignTaskAction } from "@/lib/actions/tasks"
-import { TaskActivity } from "./task-activity"
 import { useTaskAttachments } from "@/hooks/use-task-attachments"
-
-function formatFileSize(bytes: number): string {
-  if (bytes === 0) return "0 B"
-  const k = 1024
-  const sizes = ["B", "KB", "MB", "GB"]
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`
-}
-
-function getAttachmentIcon(type: string) {
-  if (type.startsWith("image/")) return <ImageIcon className="h-4 w-4 text-blue-500" />
-  if (type === "application/pdf") return <FileText className="h-4 w-4 text-red-500" />
-  return <FileIcon className="h-4 w-4 text-muted-foreground" />
-}
-
-function getFileIcon(file: File) {
-  if (file.type.startsWith("image/")) return <ImageIcon className="h-4 w-4 text-blue-500" />
-  if (file.type === "application/pdf") return <FileText className="h-4 w-4 text-red-500" />
-  return <FileIcon className="h-4 w-4 text-muted-foreground" />
-}
-
+import { TaskActivity } from "./task-activity"
+import { TaskComments } from "./task-comments"
 interface TaskSheetProps {
   task: any | null
   isOpen: boolean
@@ -377,7 +347,7 @@ export function TaskSheet({
                         className="group flex items-center justify-between rounded bg-muted/50 px-3 py-2 text-xs"
                       >
                         <div className="flex items-center gap-2 overflow-hidden">
-                          {getAttachmentIcon(att.type)}
+                          <FileIcon type={att.type} />
                           <span className="max-w-[45%] truncate font-medium text-foreground">
                             {att.name}
                           </span>
@@ -423,7 +393,7 @@ export function TaskSheet({
                       className="flex items-center justify-between rounded bg-blue-500/5 px-3 py-2 text-xs ring-1 ring-blue-500/20"
                     >
                       <div className="flex items-center gap-2 overflow-hidden">
-                        {getFileIcon(file)}
+                        <FileIcon type={file.type} />
                         <span className="max-w-[60%] truncate font-medium text-foreground">
                           {file.name}
                         </span>

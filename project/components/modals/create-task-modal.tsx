@@ -2,11 +2,12 @@
 
 import { useState, useRef } from "react"
 import { useRouter } from "next/navigation"
-import { Loader2, X, Paperclip, FileText, ImageIcon, File as FileIcon } from "lucide-react"
+import { Loader2, X, Paperclip } from "lucide-react"
 
 import { useUIStore } from "@/stores/ui-store"
 import { useProjects } from "@/hooks/use-projects"
 import { useQuery } from "@tanstack/react-query"
+import { formatFileSize } from "@/lib/utils"
 import { getProjectListsAction } from "@/lib/actions/lists"
 import { useGlobalTaskCreator } from "@/hooks/use-global-task"
 
@@ -27,23 +28,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { AssigneeSelector } from "@/components/shared/assignee-selector"
 import { DatePicker } from "@/components/shared/date-picker"
+import { FileIcon } from "@/components/shared/file-icon"
 import { RichTextEditor } from "@/components/shared/rich-text-editor"
-import { AssigneeSelector, AssigneeAvatars } from "@/components/shared/assignee-selector"
-
-function formatFileSize(bytes: number): string {
-  if (bytes === 0) return "0 B"
-  const k = 1024
-  const sizes = ["B", "KB", "MB", "GB"]
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`
-}
-
-function getFileIcon(file: File) {
-  if (file.type.startsWith("image/")) return <ImageIcon className="h-4 w-4 text-blue-500" />
-  if (file.type === "application/pdf") return <FileText className="h-4 w-4 text-red-500" />
-  return <FileIcon className="h-4 w-4 text-muted-foreground" />
-}
 
 export function CreateTaskModal() {
   const { isCreateTaskModalOpen, closeCreateTaskModal } = useUIStore()
@@ -402,7 +390,7 @@ export function CreateTaskModal() {
                     className="flex items-center justify-between rounded bg-muted/50 p-2 text-xs text-foreground"
                   >
                     <div className="flex items-center gap-2 overflow-hidden">
-                      {getFileIcon(file)}
+                      <FileIcon type={file.type} />
                       <span className="max-w-[60%] truncate">{file.name}</span>
                       <span className="text-muted-foreground">{formatFileSize(file.size)}</span>
                     </div>
