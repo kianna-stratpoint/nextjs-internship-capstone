@@ -25,20 +25,20 @@ import {
 
 import { AssigneeSelector } from "@/components/shared/assignee-selector"
 import { DatePicker } from "@/components/shared/date-picker"
-
 import { TaskCard } from "@/components/features/tasks/task-card"
+import type { ListWithTasks, TaskWithAssignees } from "@/types"
 
 const PRESET_COLORS = ["#2D6EF7", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6", "#EC4899", "#64748B"]
 
 interface ListColumnProps {
-  list: any
+  list: ListWithTasks
   canModifyBoard: boolean
   hasDoneList: boolean
   doneListsCount: number
   currentUserId: string
   isOverlay?: boolean
-  onEditList: (id: string, data: any) => Promise<void>
-  onDeleteClick: (list: any) => void
+  onEditList: (id: string, data: { title: string; color: string; type: string }) => Promise<void>
+  onDeleteClick: (list: ListWithTasks) => void
   onCreateTask: (
     listId: string,
     title: string,
@@ -47,7 +47,7 @@ interface ListColumnProps {
     dueDate?: Date
   ) => void
   isTaskPending: boolean
-  onTaskClick: (task: any) => void
+  onTaskClick: (task: TaskWithAssignees) => void
   onTaskDeleteClick: (taskId: string) => void
   projectId: string
   onAssignToggle?: (taskId: string, userId: string, isAssigning: boolean) => void
@@ -82,21 +82,21 @@ export function ListColumn({
   })
 
   const taskIds = useMemo(() => {
-    return list.tasks?.map((t: any) => t.id) || []
+    return list.tasks?.map((t: TaskWithAssignees) => t.id) || []
   }, [list.tasks])
 
   // Prevent interactions while dragging
   const style = {
     transition,
     transform: CSS.Translate.toString(transform),
-    opacity: isDragging ? 0.3 : 1, // Dim the original column while dragging it
+    opacity: isDragging ? 0.3 : 1,
   }
 
   // --- LOCAL UI STATE ---
   const [isEditing, setIsEditing] = useState(false)
   const [editTitle, setEditTitle] = useState(list.title)
-  const [editColor, setEditColor] = useState(list.color || PRESET_COLORS[0])
-  const [editType, setEditType] = useState(list.type || "custom")
+  const [editColor, setEditColor] = useState<string>(list.color || PRESET_COLORS[0] || "#2D6EF7")
+  const [editType, setEditType] = useState<string>(list.type || "custom")
 
   const [isAddingTask, setIsAddingTask] = useState(false)
   const [newTaskTitle, setNewTaskTitle] = useState("")
@@ -279,7 +279,7 @@ export function ListColumn({
       {/* TASKS AREA */}
       <div className="flex flex-col gap-2 overflow-y-auto overflow-x-hidden px-2 pb-2 pt-3 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
-          {list.tasks?.map((task: any) => (
+          {list.tasks?.map((task: TaskWithAssignees) => (
             <TaskCard
               key={task.id}
               task={task}

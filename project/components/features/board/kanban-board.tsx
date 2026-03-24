@@ -28,25 +28,6 @@ import {
   arrayMove,
 } from "@dnd-kit/sortable"
 
-import { createTaskAction, assignTaskAction, unassignTaskAction } from "@/lib/actions/tasks"
-import { useBoardStore } from "@/stores/board-store"
-import { useTasks } from "@/hooks/use-tasks"
-import { useLists } from "@/hooks/use-lists"
-import { useTaskFilter } from "@/hooks/use-task-filter"
-import { calculateFractionalPosition } from "@/lib/utils"
-
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
 import {
   Select,
   SelectContent,
@@ -54,27 +35,28 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-  DropdownMenuLabel,
-} from "@/components/ui/dropdown-menu"
 
-import { ListColumn } from "./list-column"
-import { TaskCard } from "@/components/features/tasks/task-card"
-import { TaskSheet } from "../tasks/task-sheet"
+import { createTaskAction, assignTaskAction, unassignTaskAction } from "@/lib/actions/tasks"
+import { useBoardStore } from "@/stores/board-store"
+import { useTasks } from "@/hooks/use-tasks"
+import { useLists } from "@/hooks/use-lists"
+import { useTaskFilter } from "@/hooks/use-task-filter"
 import { useProjectChannel } from "@/hooks/use-project-channel"
-
-import type { TaskWithAssignees } from "@/types"
+import { calculateFractionalPosition } from "@/lib/utils"
+import { TaskCard } from "@/components/features/tasks/task-card"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import type { TaskWithAssignees, ProjectWithMembers, ListWithTasks } from "@/types"
+import { TaskSheet } from "../tasks/task-sheet"
+import { ListColumn } from "./list-column"
+import { BulkActionsToolbar } from "./bulk-actions-toolbar"
+import { BoardModals } from "./board-modals"
 
 const PRESET_COLORS = ["#2D6EF7", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6", "#EC4899", "#64748B"]
 
 interface KanbanBoardProps {
-  project: any
-  initialLists: any[]
+  project: ProjectWithMembers
+  initialLists: ListWithTasks[]
   currentUserId: string
 }
 
@@ -99,7 +81,7 @@ function customCollisionDetection(
     return closestCorners(args)
   }
 
-  // --- Normal Task Collision ---
+  // --- Normal Task Collision (Keep your existing logic below) ---
   const pointerCollisions = pointerWithin(args)
 
   if (pointerCollisions.length > 0) {
@@ -835,222 +817,33 @@ export function KanbanBoard({ project, initialLists, currentUserId }: KanbanBoar
       </DndContext>
 
       {/* FLOATING BULK ACTIONS TOOLBAR */}
-      {selectedTaskIds.length > 0 && (
-        <div className="fixed bottom-8 left-1/2 flex -translate-x-1/2 items-center gap-2 rounded-full border border-border bg-foreground px-6 py-3 text-background shadow-2xl animate-in slide-in-from-bottom-5">
-          <div className="flex items-center gap-2 border-r border-background/20 pr-4 text-sm font-medium">
-            {isBulkProcessing ? (
-              <Loader2 size={18} className="animate-spin" />
-            ) : (
-              <CheckSquare size={18} />
-            )}
-            {selectedTaskIds.length} selected
-          </div>
+      <BulkActionsToolbar
+        selectedTaskIds={selectedTaskIds}
+        isBulkProcessing={isBulkProcessing}
+        storeLists={storeLists}
+        projectMembers={project?.members || []}
+        onMove={handleBulkMove}
+        onAssign={handleBulkAssign}
+        onDeleteClick={() => setIsBulkDeleteOpen(true)}
+        onClearSelection={clearTaskSelection}
+      />
 
-          <div className="flex items-center gap-1">
-            {/* BULK MOVE */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  disabled={isBulkProcessing}
-                  className="text-background hover:bg-background/20 hover:text-background"
-                >
-                  <FolderOutput size={16} className="mr-2" />
-                  Move
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="center" className="w-48">
-                <DropdownMenuLabel>Move to list...</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                {storeLists.map((list) => (
-                  <DropdownMenuItem
-                    key={list.id}
-                    onClick={() => handleBulkMove(list.id)}
-                    className="cursor-pointer"
-                  >
-                    <div
-                      className="mr-2 h-2 w-2 rounded-full"
-                      style={{ backgroundColor: list.color || "#CCC" }}
-                    />
-                    {list.title}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-
-            {/* BULK ASSIGN */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  disabled={isBulkProcessing}
-                  className="text-background hover:bg-background/20 hover:text-background"
-                >
-                  <UserPlus size={16} className="mr-2" />
-                  Assign
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="center" className="w-48">
-                <DropdownMenuLabel>Assign to...</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                {project?.members?.map((member: any) => (
-                  <DropdownMenuItem
-                    key={member.userId}
-                    onClick={() => handleBulkAssign(member.userId)}
-                    className="cursor-pointer"
-                  >
-                    {/* Display user name or email */}
-                    {member.user?.firstName
-                      ? `${member.user.firstName} ${member.user.lastName || ""}`
-                      : member.user?.email || "Unknown User"}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-
-            <div className="mx-1 h-4 w-px bg-background/20" />
-
-            {/* BULK DELETE */}
-            <Button
-              variant="ghost"
-              size="sm"
-              disabled={isBulkProcessing}
-              className="text-red-400 hover:bg-red-900/30 hover:text-red-300"
-              onClick={() => setIsBulkDeleteOpen(true)}
-            >
-              <Trash2 size={16} className="mr-2" />
-              Delete
-            </Button>
-          </div>
-
-          {/* CLOSE/CLEAR BUTTON */}
-          <button
-            onClick={clearTaskSelection}
-            disabled={isBulkProcessing}
-            className="ml-2 rounded-full p-1 text-background/70 hover:bg-background/20 hover:text-background disabled:opacity-50"
-          >
-            <X size={16} />
-          </button>
-        </div>
-      )}
-
-      {/* NEW: BULK DELETE ALERT */}
-      <AlertDialog open={isBulkDeleteOpen} onOpenChange={setIsBulkDeleteOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-foreground">
-              Delete {selectedTaskIds.length} Tasks?
-            </AlertDialogTitle>
-            <AlertDialogDescription className="text-muted-foreground">
-              Are you sure you want to delete these tasks? This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="text-foreground">Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleBulkDelete}
-              className="bg-red-600 text-white hover:bg-red-700"
-            >
-              Delete {selectedTaskIds.length} Tasks
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* SMART DELETION / TASK MIGRATION MODAL */}
-      <AlertDialog
-        open={!!listToDelete}
-        onOpenChange={(isOpen) => {
-          if (!isOpen) {
-            setListToDelete(null)
-            setMigrationListId("")
-          }
-        }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-foreground">Delete List</AlertDialogTitle>
-            <AlertDialogDescription asChild>
-              <div className="text-sm text-muted-foreground">
-                {listToDelete?.taskCount && listToDelete.taskCount > 0 ? (
-                  <div className="mt-2 space-y-4">
-                    <p>
-                      This list contains <strong>{listToDelete.taskCount} tasks</strong>. Deleting
-                      it will also delete those tasks unless you migrate them. Where should we move
-                      them?
-                    </p>
-                    <Select value={migrationListId} onValueChange={setMigrationListId}>
-                      <SelectTrigger className="text-foreground">
-                        <SelectValue placeholder="Select destination list..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {storeLists
-                          .filter((l) => l.id !== listToDelete.id)
-                          .map((l) => (
-                            <SelectItem key={l.id} value={l.id}>
-                              {l.title}
-                            </SelectItem>
-                          ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                ) : (
-                  <p className="mt-2">
-                    Are you sure you want to delete the <strong>{listToDelete?.title}</strong> list?
-                    This cannot be undone.
-                  </p>
-                )}
-              </div>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="text-foreground" disabled={isDeletingList}>
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={(e) => {
-                e.preventDefault()
-                confirmDeleteList()
-              }}
-              disabled={
-                isDeletingList ||
-                (listToDelete?.taskCount ? listToDelete.taskCount > 0 && !migrationListId : false)
-              }
-              className="bg-red-600 text-white hover:bg-red-700 disabled:bg-red-600/50"
-            >
-              {isDeletingList ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Delete List"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <AlertDialog open={!!taskToDelete} onOpenChange={() => setTaskToDelete(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-foreground">Delete Task</AlertDialogTitle>
-            <AlertDialogDescription className="text-muted-foreground">
-              Are you sure you want to delete this task? This action cannot be undone and will
-              remove all associated comments and assignments.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="text-foreground">Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                if (taskToDelete) {
-                  deleteTask(taskToDelete)
-                  setTaskToDelete(null)
-                }
-              }}
-              className="bg-red-600 text-white hover:bg-red-700"
-            >
-              Delete Task
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <BoardModals
+        isBulkDeleteOpen={isBulkDeleteOpen}
+        setIsBulkDeleteOpen={setIsBulkDeleteOpen}
+        handleBulkDelete={handleBulkDelete}
+        selectedTaskCount={selectedTaskIds.length}
+        listToDelete={listToDelete}
+        setListToDelete={setListToDelete}
+        migrationListId={migrationListId}
+        setMigrationListId={setMigrationListId}
+        storeLists={storeLists}
+        confirmDeleteList={confirmDeleteList}
+        isDeletingList={isDeletingList}
+        taskToDelete={taskToDelete}
+        setTaskToDelete={setTaskToDelete}
+        deleteTask={deleteTask}
+      />
 
       <TaskSheet
         key={selectedTask?.id || "empty-sheet"}
