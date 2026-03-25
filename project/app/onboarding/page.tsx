@@ -1,17 +1,9 @@
-/* ============================================
-   Collects: First Name, Last Name, Role
-   Saves to: Clerk unsafeMetadata + updates user profile
-   Redirects to: /dashboard on completion
-   
-   Uses Clerk unsafeMetadata for now.
-   Phase 3: migrate to database storage.
-   ============================================ */
-
 "use client"
 
 import { useState, useEffect } from "react"
 import { useUser } from "@clerk/nextjs"
 import { useRouter } from "next/navigation"
+import { syncUserOnboardingAction } from "@/lib/actions/users"
 
 const roles = [
   "Project Manager",
@@ -58,13 +50,15 @@ function OnboardingForm({ user }: { user: NonNullable<ReturnType<typeof useUser>
         },
       })
 
-      // 1. Force Clerk to fetch the newly updated data and refresh the local session token
+      const syncResult = await syncUserOnboardingAction(role)
+      if (!syncResult.success) {
+        throw new Error(syncResult.error)
+      }
+
       await user.reload()
 
-      // 2. Force a hard browser reload instead of a soft Next.js router transition.
-      // This guarantees the server receives the brand new cookie on the next request.
       window.location.href = "/dashboard"
-    } catch {
+    } catch (err) {
       setError("Something went wrong. Please try again.")
       setIsSubmitting(false)
     }
