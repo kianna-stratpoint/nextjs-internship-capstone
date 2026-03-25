@@ -1,8 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useEffect, Suspense } from "react"
-import { usePathname, useRouter } from "next/navigation"
+import { Suspense } from "react"
 import { useUIStore } from "@/stores/ui-store"
 import { Sidebar } from "@/components/shared/sidebar"
 import { TopNav } from "@/components/shared/top-nav"
@@ -13,23 +12,10 @@ import { InviteMemberModal } from "../modals/invite-member-modal"
 
 interface DashboardShellProps {
   children: React.ReactNode
-  onboardingComplete: boolean
 }
 
-export function DashboardShell({ children, onboardingComplete }: DashboardShellProps) {
+export function DashboardShell({ children }: DashboardShellProps) {
   const { isSidebarOpen, closeSidebar } = useUIStore()
-  const pathname = usePathname()
-  const router = useRouter()
-
-  useEffect(() => {
-    if (!onboardingComplete && pathname !== "/onboarding") {
-      router.replace("/onboarding")
-    }
-  }, [onboardingComplete, pathname, router])
-
-  if (pathname === "/onboarding") {
-    return <>{children}</>
-  }
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">

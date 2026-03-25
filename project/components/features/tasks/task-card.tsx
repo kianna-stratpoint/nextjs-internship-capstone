@@ -52,6 +52,7 @@ export function TaskCard({
   const { setNodeRef, attributes, listeners, transform, transition, isDragging } = useSortable({
     id: task.id,
     data: { type: "task", task },
+    disabled: isOverlay,
   })
 
   const style = {

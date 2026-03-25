@@ -1,10 +1,3 @@
-/* ============================================
-   Server-side auth helpers. Used in server
-   components and server actions instead of calling
-   Clerk directly — makes it easier to swap auth
-   providers later if needed.
-   ============================================ */
-
 import { currentUser, auth } from "@clerk/nextjs/server"
 import { redirect } from "next/navigation"
 import { getUserByClerkId } from "@/lib/db/queries/users"
@@ -42,15 +35,17 @@ export async function requireAuth() {
   // Translate Clerk ID to Database UUID
   const dbUser = await getUserByClerkId(user.id)
 
-  if (!dbUser && !user.onboardingComplete) {
+  if (!dbUser) {
     redirect("/onboarding")
-  } else if (!dbUser) {
-    throw new Error("User authenticated but not found in the database.")
+  }
+
+  if (!user.onboardingComplete) {
+    redirect("/onboarding")
   }
 
   return {
     ...user,
-    dbUserId: dbUser.id, // <-- We add the Postgres UUID here!
+    dbUserId: dbUser.id,
   }
 }
 

@@ -73,6 +73,10 @@ export function EditProjectModal() {
 
     const formData = new FormData(e.currentTarget)
 
+    if (formData.get("priority") === "none") {
+      formData.set("priority", "")
+    }
+
     try {
       const result = (await updateProject({
         id: editingProject.id,
@@ -188,11 +192,16 @@ export function EditProjectModal() {
 
             <div className="space-y-2">
               <label className="text-sm font-medium text-foreground">Priority</label>
-              <Select name="priority" defaultValue={editingProject.priority} disabled={isUpdating}>
+              <Select
+                name="priority"
+                defaultValue={editingProject.priority || "none"}
+                disabled={isUpdating}
+              >
                 <SelectTrigger className="text-foreground">
                   <SelectValue placeholder="Priority" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="none">None</SelectItem>
                   <SelectItem value="low">Low</SelectItem>
                   <SelectItem value="medium">Medium</SelectItem>
                   <SelectItem value="high">High</SelectItem>

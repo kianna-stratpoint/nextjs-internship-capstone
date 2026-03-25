@@ -3,7 +3,7 @@
    cards and Analytics page.
    ============================================ */
 
-import { eq, and, count, sql, gte, inArray, desc } from "drizzle-orm"
+import { eq, and, count, sql, gte, inArray, desc, lt } from "drizzle-orm"
 import { db } from "@/lib/db"
 import { projects, projectMembers, tasks } from "@/lib/db/schema"
 
@@ -116,11 +116,11 @@ export async function getDashboardStats(userId: string) {
         eq(projects.status, "active"),
         eq(projects.isArchived, false),
         gte(projects.createdAt, twoWeeksAgo),
-        sql`${projects.createdAt} < ${oneWeekAgo}`
+        lt(projects.createdAt, oneWeekAgo)
       )
     )
 
-  const activeTrend = (thisWeekProjects?.count ?? 0) - (lastWeekProjects?.count ?? 0)
+  const activeTrend = thisWeekProjects?.count ?? 0
 
   return {
     activeProjects: activeProjectsResult?.count ?? 0,

@@ -79,6 +79,10 @@ export function CreateProjectModal() {
     setError(null)
     setFieldErrors({})
 
+    if (formData.get("priority") === "none") {
+      formData.set("priority", "")
+    }
+
     try {
       const result = (await createProject(formData)) as any
 
@@ -98,7 +102,6 @@ export function CreateProjectModal() {
         router.push(`/projects/${result.projectId}`)
       }
     } catch (err: any) {
-      // Fallback for unexpected network/runtime crashes
       setError(err.message || "An unexpected error occurred.")
     }
   }
@@ -209,11 +212,12 @@ export function CreateProjectModal() {
 
             <div className="space-y-2">
               <label className="text-sm font-medium text-foreground">Priority</label>
-              <Select name="priority" defaultValue="medium" disabled={isCreating}>
+              <Select name="priority" disabled={isCreating}>
                 <SelectTrigger className="text-foreground">
                   <SelectValue placeholder="Priority" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="none">None</SelectItem>
                   <SelectItem value="low">Low</SelectItem>
                   <SelectItem value="medium">Medium</SelectItem>
                   <SelectItem value="high">High</SelectItem>

@@ -138,7 +138,7 @@ export const projects = pgTable(
     description: text("description"),
     color: text("color").default("#2D6EF7").notNull(),
     status: projectStatusEnum("status").default("active").notNull(),
-    priority: projectPriorityEnum("priority").default("medium").notNull(),
+    priority: projectPriorityEnum("priority"),
     visibility: projectVisibilityEnum("visibility").default("private").notNull(),
     startDate: timestamp("start_date", { withTimezone: true }),
     dueDate: timestamp("due_date", { withTimezone: true }),

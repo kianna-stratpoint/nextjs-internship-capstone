@@ -5,7 +5,6 @@ const dateHelper = z.preprocess(
   z.coerce.date().optional().nullable()
 )
 
-// 1. Define the base shape WITHOUT the superRefine
 const baseProjectSchema = z.object({
   title: z
     .string()
@@ -20,11 +19,15 @@ const baseProjectSchema = z.object({
     .string()
     .regex(/^#([0-9A-F]{3}){1,2}$/i, "Invalid hex color code")
     .optional(),
-  priority: z
-    .enum(["low", "medium", "high"], {
-      message: "Priority must be low, medium, or high",
-    })
-    .optional(),
+  priority: z.preprocess(
+    (arg) => (typeof arg === "string" && arg === "" ? null : arg),
+    z
+      .enum(["low", "medium", "high"], {
+        message: "Priority must be low, medium, or high",
+      })
+      .nullable()
+      .optional()
+  ),
   visibility: z.enum(["public", "private"]).default("private"),
   startDate: dateHelper,
   dueDate: dateHelper,

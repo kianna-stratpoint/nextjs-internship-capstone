@@ -50,6 +50,13 @@
       "when": 1774088194085,
       "tag": "0006_flashy_owl",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1774407200162,
+      "tag": "0007_tired_darkhawk",
+      "breakpoints": true
     }
   ]
 }
