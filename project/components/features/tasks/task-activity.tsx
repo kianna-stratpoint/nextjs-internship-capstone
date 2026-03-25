@@ -128,9 +128,6 @@ function getActivityIcon(action: string, metadata?: any) {
   }
 }
 
-/**
- * Renders text with **bold** markdown-style markers.
- */
 function RichText({ text }: { text: string }) {
   const parts = text.split(/(\*\*[^*]+\*\*)/)
   return (

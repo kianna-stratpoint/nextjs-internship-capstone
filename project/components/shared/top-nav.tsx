@@ -66,15 +66,13 @@ const ClerkUserButton = dynamic(
             </ClerkLoading>
             <ClerkLoaded>
               <UserButton
-                // 2. Apply to the Button & Dropdown
                 appearance={{
                   ...customAppearance,
                   elements: {
                     ...customAppearance.elements,
-                    avatarBox: "h-8 w-8", // Keep your custom avatar sizing
+                    avatarBox: "h-8 w-8",
                   },
                 }}
-                // 3. Apply to the "Manage Account" Modal!
                 userProfileProps={{
                   appearance: customAppearance,
                 }}
@@ -117,7 +115,6 @@ export function TopNav() {
       <div className="flex items-center gap-4">
         <ThemeToggle />
         <NotificationBell />
-        {/* Pass the theme down to the dynamic UserButton */}
         <ClerkUserButton theme={theme} />
       </div>
     </header>

@@ -54,7 +54,6 @@ export function ActivityFilters({
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="all">All Projects</SelectItem>
-          {/* TypeScript now knows exactly what properties 'project' has here */}
           {memberProjects.map((project) => (
             <SelectItem key={project.id} value={project.id}>
               <div className="flex items-center gap-2">

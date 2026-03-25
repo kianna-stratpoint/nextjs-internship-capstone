@@ -11,7 +11,6 @@ export const metadata: Metadata = {
 export default async function CalendarPage() {
   const { dbUserId: userId } = await requireAuth()
 
-  // Fetch projects on server — instant, no client-side loading needed
   const projects = await getMemberProjects(userId)
 
   const projectOptions = projects.map((p) => ({

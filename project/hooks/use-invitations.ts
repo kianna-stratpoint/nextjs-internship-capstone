@@ -1,13 +1,5 @@
 "use client"
 
-/* ============================================
-   useInvitations Hook
-
-   Data layer for project invitations.
-   Handles both outgoing (admin managing invites)
-   and incoming (user receiving invites) flows.
-   ============================================ */
-
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { useToast } from "@/hooks/use-toast"
 import {

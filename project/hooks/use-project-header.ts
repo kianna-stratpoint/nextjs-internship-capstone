@@ -17,8 +17,6 @@ export function useProjectHeaderLogic(project: ProjectCardData, isPinned?: boole
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
 
-  // ✅ Local optimistic state for immediate UI feedback when the user clicks pin.
-  // `null` means "no local override, use the best available truth".
   const [localPinOverride, setLocalPinOverride] = useState<boolean | null>(null)
 
   const cachedProject = getProjectFromCache(project.id)
@@ -42,11 +40,9 @@ export function useProjectHeaderLogic(project: ProjectCardData, isPinned?: boole
       currentPinState: currentState,
     })
       .then(() => {
-        // Mutation succeeded — clear local override, let cache take over
         setLocalPinOverride(null)
       })
       .catch(() => {
-        // Mutation failed — revert local override
         setLocalPinOverride(null)
       })
   }

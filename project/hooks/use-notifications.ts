@@ -1,13 +1,5 @@
 "use client"
 
-/* ============================================
-   useNotifications Hook
-
-   Data layer for the notification bell.
-   Fetches notifications (paginated), unread count,
-   and handles mark-read / delete mutations.
-   ============================================ */
-
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { useToast } from "@/hooks/use-toast"
 import {
@@ -32,7 +24,6 @@ export function useNotifications(options?: { limit?: number; unreadOnly?: boolea
 
   /* ==================== QUERIES ==================== */
 
-  // Paginated notification list
   const {
     data: notificationsData,
     isLoading: isLoadingNotifications,
@@ -47,7 +38,6 @@ export function useNotifications(options?: { limit?: number; unreadOnly?: boolea
   })
 
   // Unread count (for badge) — separate query so the badge
-  // can update independently without refetching the full list
   const { data: unreadCount = 0 } = useQuery({
     queryKey: ["notifications-unread-count"],
     queryFn: async () => {

@@ -55,7 +55,7 @@ export function ProjectList() {
       if (view === "active" && p.status !== "active") return false
       if (view === "completed" && p.status !== "completed") return false
 
-      if (priorities.length > 0 && !priorities.includes(p.priority)) return false
+      if (priorities.length > 0 && !priorities.includes(p.priority ?? "")) return false
 
       if (statuses.length > 0 && !statuses.includes(p.status)) return false
 

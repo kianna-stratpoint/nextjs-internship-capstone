@@ -208,7 +208,6 @@ export function MemberDetailSheet({
         </SheetContent>
       </Sheet>
 
-      {/* Remove Confirmation Dialog */}
       <AlertDialog open={showRemoveDialog} onOpenChange={setShowRemoveDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>

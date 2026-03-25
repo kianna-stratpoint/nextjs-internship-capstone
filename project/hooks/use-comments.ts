@@ -9,7 +9,6 @@ import {
   deleteCommentAction,
 } from "@/lib/actions/comments"
 
-// This type helps us mock the optimistic UI accurately
 type OptimisticUser = {
   id: string
   firstName: string | null
@@ -21,7 +20,6 @@ export function useComments(taskId: string, projectId: string) {
   const queryClient = useQueryClient()
   const { toast } = useToast()
 
-  // The unique key for this specific task's comments
   const queryKey = ["comments", taskId]
 
   // 1. Fetch Comments
@@ -50,7 +48,6 @@ export function useComments(taskId: string, projectId: string) {
       await queryClient.cancelQueries({ queryKey })
       const previousComments = queryClient.getQueryData<any[]>(queryKey)
 
-      // Create a fake comment that matches the DB schema shape
       const tempComment = {
         id: `temp-${Date.now()}`,
         taskId,
@@ -61,7 +58,6 @@ export function useComments(taskId: string, projectId: string) {
         user: { ...currentUser },
       }
 
-      // Add the fake comment to the bottom of the list instantly
       queryClient.setQueryData(queryKey, (old: any[]) => {
         return old ? [...old, tempComment] : [tempComment]
       })
@@ -69,7 +65,6 @@ export function useComments(taskId: string, projectId: string) {
       return { previousComments }
     },
     onSuccess: () => {
-      // Refresh to get the real DB ID and timestamps
       queryClient.invalidateQueries({ queryKey })
     },
     onError: (err: any, _, context) => {
@@ -89,7 +84,6 @@ export function useComments(taskId: string, projectId: string) {
       await queryClient.cancelQueries({ queryKey })
       const previousComments = queryClient.getQueryData<any[]>(queryKey)
 
-      // Find the comment and update its text instantly
       queryClient.setQueryData(queryKey, (old: any[]) => {
         if (!old) return []
         return old.map((comment) =>

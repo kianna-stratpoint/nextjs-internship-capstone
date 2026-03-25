@@ -1,21 +1,5 @@
 "use client"
 
-/* ============================================
-   useProjectChannel Hook
-
-   Subscribes to a project's Pusher channel and
-   invalidates React Query caches when events
-   arrive so the UI updates automatically.
-
-   IMPORTANT: Query keys here MUST match the keys
-   used in the actual hooks:
-   - use-lists.ts:       ["project-lists", projectId]
-   - use-projects.ts:    ["projects", ...]
-   - use-comments.ts:    ["comments", taskId]
-   - use-team-member.ts: ["members", projectId]
-   - use-invitations.ts: ["invitations", projectId]
-   ============================================ */
-
 import { useEffect, useRef } from "react"
 import { useQueryClient } from "@tanstack/react-query"
 import type { Channel } from "pusher-js"

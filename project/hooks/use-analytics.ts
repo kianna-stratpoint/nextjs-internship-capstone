@@ -1,12 +1,5 @@
 "use client"
 
-/* ============================================
-   useAnalytics Hook
-
-   Fetches all analytics data for a project
-   with time range filtering.
-   ============================================ */
-
 import { useQuery } from "@tanstack/react-query"
 import { getProjectAnalyticsAction } from "@/lib/actions/analytics"
 import type { TimeRange, AnalyticsData } from "@/types/analytics"

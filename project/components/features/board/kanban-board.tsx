@@ -81,7 +81,7 @@ function customCollisionDetection(
     return closestCorners(args)
   }
 
-  // --- Normal Task Collision (Keep your existing logic below) ---
+  // --- Normal Task Collision ---
   const pointerCollisions = pointerWithin(args)
 
   if (pointerCollisions.length > 0) {

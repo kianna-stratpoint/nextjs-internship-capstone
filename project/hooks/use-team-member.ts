@@ -1,13 +1,5 @@
 "use client"
 
-/* ============================================
-   useTeamMembers Hook
-
-   Data layer for the team page and member
-   detail sheet. Fetches members, counts,
-   profiles, and handles role/removal mutations.
-   ============================================ */
-
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { useToast } from "@/hooks/use-toast"
 import {
@@ -30,8 +22,6 @@ export function useTeamMembers(projectId: string | null) {
   const { toast } = useToast()
 
   /* ==================== QUERIES ==================== */
-
-  // All members of the selected project
   const {
     data: members = [],
     isLoading: isLoadingMembers,

@@ -259,7 +259,7 @@ export function useTasks(projectId: string) {
     },
   })
 
-  // ── Attachment Mutations (no useUploadThing here — upload happens at component level) ──
+  // ── Attachment Mutations  ──
 
   const saveAttachmentsMutation = useMutation({
     mutationFn: async ({
