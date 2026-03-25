@@ -29,11 +29,6 @@ const NOTIFICATION_OPTIONS: {
     description: "When a project you're in is updated",
   },
   { key: "memberJoined", label: "New members", description: "When someone joins your project" },
-  {
-    key: "invitationReceived",
-    label: "Invitations",
-    description: "When you receive a project invitation",
-  },
 ]
 
 interface SettingsNotificationsProps {
